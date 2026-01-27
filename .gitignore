@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+target/
+*.pyc
+__pycache__/
+*.pyo
+*.egg-info/
+
+# Python virtual environment
+.venv/
+venv/
+*.lock
+!uv.lock
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# Models (large files)
+src-backend/models/*/model.safetensors
+src-backend/models/*/.cache/
+
+# Tauri
+src-tauri/target/
+src-tauri/WixTools/
+
+# Test coverage
+coverage/
+.coverage
+htmlcov/
+
+models/
+

@@ -1,0 +1,1 @@
+"""Vocistant Core Module"""
