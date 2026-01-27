@@ -13,4 +13,10 @@ dependencies = [
     "silero-vad>=5.1",
     "mlx-audio>=0.2.10",
     "mlx-audio-plus>=0.1.8",
+    "openai>=1.12.0",
+    "httpx>=0.26.0",
 ]
+
+[[tool.uv.index]]
+url = "https://mirrors.ustc.edu.cn/pypi/simple"
+default = true

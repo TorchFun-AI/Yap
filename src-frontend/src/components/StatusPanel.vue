@@ -12,14 +12,15 @@ const panelContentRef = ref<HTMLElement | null>(null)
 
 const appState = useAppState()
 const isRecording = computed(() =>
-  appState.status === 'listening' || appState.status === 'processing' || appState.status === 'speaking'
+  appState.status === 'listening' || appState.status === 'transcribing' || appState.status === 'correcting' || appState.status === 'speaking'
 )
 const bufferDuration = ref(0)
 
 const statusColor = computed(() => {
   switch (appState.status) {
     case 'speaking': return 'orange'
-    case 'processing': return 'blue'
+    case 'transcribing': return 'blue'
+    case 'correcting': return 'purple'
     case 'listening': return 'green'
     case 'error': return 'red'
     default: return 'default'
@@ -29,7 +30,8 @@ const statusColor = computed(() => {
 const statusText = computed(() => {
   switch (appState.status) {
     case 'speaking': return 'Speaking'
-    case 'processing': return 'Transcribing'
+    case 'transcribing': return 'Transcribing'
+    case 'correcting': return 'Correcting'
     case 'listening': return 'Listening'
     case 'idle': return 'Idle'
     case 'error': return 'Error'
@@ -41,8 +43,8 @@ onMounted(async () => {
   try {
     await signalController.connect('ws://127.0.0.1:8765/ws/audio')
     signalController.onMessage((data: any) => {
-      if (data.type === 'transcription') {
-        appState.setTranscript(data.text)
+      if (data.type === 'transcription' || data.type === 'correction') {
+        appState.setTranscript(data.text, data.original_text)
         bufferDuration.value = 0
       } else if (data.type === 'vad') {
         bufferDuration.value = data.buffer_duration || 0
@@ -55,7 +57,9 @@ onMounted(async () => {
         } else if (data.status === 'stopped') {
           appState.setStatus('idle')
         } else if (data.status === 'transcribing') {
-          appState.setStatus('processing')
+          appState.setStatus('transcribing')
+        } else if (data.status === 'correcting') {
+          appState.setStatus('correcting')
         } else if (data.status === 'speaking') {
           appState.setStatus('speaking')
         }

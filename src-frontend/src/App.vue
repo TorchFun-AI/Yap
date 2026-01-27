@@ -1,14 +1,10 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref } from 'vue'
 import { getCurrentWindow, LogicalSize, LogicalPosition } from '@tauri-apps/api/window'
 import FloatingBall from './components/FloatingBall.vue'
 import StatusPanel from './components/StatusPanel.vue'
-import { useAppState } from '@/stores/appState'
-import { checkBackendHealth } from '@/services/bridge'
 
 const showPanel = ref(false)
-const appState = useAppState()
-let healthCheckInterval: number | null = null
 let ballPosition = { x: 0, y: 0 }
 
 const togglePanel = async () => {
@@ -49,22 +45,6 @@ const togglePanel = async () => {
     await appWindow.show()
   }
 }
-
-const checkConnection = async () => {
-  const isHealthy = await checkBackendHealth()
-  appState.setConnected(isHealthy)
-}
-
-onMounted(() => {
-  checkConnection()
-  healthCheckInterval = window.setInterval(checkConnection, 3000)
-})
-
-onUnmounted(() => {
-  if (healthCheckInterval) {
-    clearInterval(healthCheckInterval)
-  }
-})
 </script>
 
 <template>

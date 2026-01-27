@@ -3,6 +3,7 @@ Vocistant AI Backend
 FastAPI application with WebSocket support for real-time voice processing.
 """
 
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -11,6 +12,13 @@ import uvicorn
 
 from core.recording_session import RecordingSession
 from core.audio_capture import AudioCapture
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager

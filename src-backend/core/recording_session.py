@@ -28,6 +28,10 @@ class RecordingSession:
 
         self._is_running = True
         self._loop = asyncio.get_event_loop()
+
+        # Initialize pipeline (loads ASR model) on start
+        self._pipeline.initialize()
+
         self._audio_capture.start(callback=self._on_audio_chunk)
         self._on_result({"type": "status", "status": "recording"})
 

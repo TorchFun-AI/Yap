@@ -1,16 +1,17 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 
-export type AppStatus = 'idle' | 'listening' | 'processing' | 'speaking' | 'error'
+export type AppStatus = 'idle' | 'listening' | 'transcribing' | 'correcting' | 'speaking' | 'error'
 
 export const useAppState = defineStore('appState', () => {
   const status = ref<AppStatus>('idle')
   const isConnected = ref(false)
   const currentTranscript = ref('')
+  const originalTranscript = ref('')
   const errorMessage = ref('')
 
   const isActive = computed(() =>
-    status.value === 'listening' || status.value === 'processing'
+    status.value === 'listening' || status.value === 'transcribing' || status.value === 'correcting'
   )
 
   function setStatus(newStatus: AppStatus) {
@@ -21,8 +22,11 @@ export const useAppState = defineStore('appState', () => {
     isConnected.value = connected
   }
 
-  function setTranscript(text: string) {
+  function setTranscript(text: string, original?: string) {
     currentTranscript.value = text
+    if (original) {
+      originalTranscript.value = original
+    }
   }
 
   function setError(message: string) {
@@ -33,6 +37,7 @@ export const useAppState = defineStore('appState', () => {
   function reset() {
     status.value = 'idle'
     currentTranscript.value = ''
+    originalTranscript.value = ''
     errorMessage.value = ''
   }
 
@@ -40,6 +45,7 @@ export const useAppState = defineStore('appState', () => {
     status,
     isConnected,
     currentTranscript,
+    originalTranscript,
     errorMessage,
     isActive,
     setStatus,

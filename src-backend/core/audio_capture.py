@@ -15,7 +15,7 @@ class AudioCapture:
 
     SAMPLE_RATE = 16000
     CHANNELS = 1
-    BLOCK_SIZE = 4096
+    BLOCK_SIZE = 512  # 32ms per block for lower latency
     DTYPE = np.int16
 
     def __init__(self):
