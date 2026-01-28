@@ -77,6 +77,16 @@ class LLMCorrector:
             else:
                 raise ValueError(f"Unsupported provider: {self.provider}")
 
+            # Warm up the LLM by sending a simple request
+            logger.info(f"Warming up LLM with provider: {self.provider}, model: {self.model}")
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": "Hello"}],
+                temperature=0,
+                max_tokens=10,
+            )
+            logger.info(f"LLM warmup response: {response.choices[0].message.content.strip()}")
+
             self.is_initialized = True
             logger.info(f"LLM corrector initialized with provider: {self.provider}, model: {self.model}")
 
@@ -157,6 +167,8 @@ class LLMCorrector:
                 }
 
             is_corrected = corrected_text != text
+
+            logger.info(f"LLM correction result: '{text}' -> '{corrected_text}' (corrected: {is_corrected})")
 
             return {
                 "corrected_text": corrected_text,
