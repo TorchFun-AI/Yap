@@ -9,6 +9,7 @@ import numpy as np
 from .vad_engine import VADEngine
 from .asr_engine import ASREngine
 from .llm_corrector import LLMCorrector
+from .text_input import TextInput
 from .config import Config
 
 logger = logging.getLogger(__name__)
@@ -22,6 +23,7 @@ class AudioPipeline:
         self.vad = VADEngine()
         self.asr = ASREngine()
         self.llm = LLMCorrector() if self.config.llm_enabled else None
+        self.text_input = TextInput()
         self.audio_buffer = bytearray()
         self.is_initialized = False
         self._on_status = on_status
@@ -39,6 +41,7 @@ class AudioPipeline:
         self.asr.initialize()
         if self.llm:
             self.llm.initialize()
+        self.text_input.initialize()
         self.is_initialized = True
         logger.info("Pipeline initialized")
 
@@ -119,10 +122,19 @@ class AudioPipeline:
 
                     if "error" in correction_result:
                         result["correction_error"] = correction_result["error"]
+
+                    # Step 3: Input text at cursor position
+                    final_text = result["text"]
+                    self._emit_status("inputting", text=final_text)
+                    self.text_input.input_text_typewriter(final_text)
                 else:
                     # LLM not available, transcription is final
                     result = transcription_result
                     result["is_final"] = True
+
+                    # Input transcription directly
+                    self._emit_status("inputting", text=transcription)
+                    self.text_input.input_text_typewriter(transcription)
 
             t_end = time.perf_counter()
             logger.info(f"[TIMING] Total processing time: {(t_end - t_start)*1000:.0f}ms")
