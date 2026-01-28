@@ -1,14 +1,18 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import type { ConnectionStatus } from '@/services/signalController'
 
 export type AppStatus = 'idle' | 'listening' | 'transcribing' | 'correcting' | 'speaking' | 'error'
 
 export const useAppState = defineStore('appState', () => {
   const status = ref<AppStatus>('idle')
-  const isConnected = ref(false)
+  const connectionStatus = ref<ConnectionStatus>('disconnected')
+  const retryCount = ref(0)
   const currentTranscript = ref('')
   const originalTranscript = ref('')
   const errorMessage = ref('')
+
+  const isConnected = computed(() => connectionStatus.value === 'connected')
 
   const isActive = computed(() =>
     status.value === 'listening' || status.value === 'transcribing' || status.value === 'correcting'
@@ -18,8 +22,9 @@ export const useAppState = defineStore('appState', () => {
     status.value = newStatus
   }
 
-  function setConnected(connected: boolean) {
-    isConnected.value = connected
+  function setConnectionStatus(newStatus: ConnectionStatus, retry = 0) {
+    connectionStatus.value = newStatus
+    retryCount.value = retry
   }
 
   function setTranscript(text: string, original?: string) {
@@ -43,13 +48,15 @@ export const useAppState = defineStore('appState', () => {
 
   return {
     status,
+    connectionStatus,
+    retryCount,
     isConnected,
     currentTranscript,
     originalTranscript,
     errorMessage,
     isActive,
     setStatus,
-    setConnected,
+    setConnectionStatus,
     setTranscript,
     setError,
     reset,

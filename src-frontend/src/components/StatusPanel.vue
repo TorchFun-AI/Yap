@@ -3,6 +3,18 @@ import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { CloseOutlined, AudioOutlined, AudioMutedOutlined } from '@ant-design/icons-vue'
 import { useAppState } from '@/stores/appState'
 import { signalController } from '@/services/signalController'
+import {
+  WS_DEFAULT_URL,
+  RECORDING_DEFAULT_LANGUAGE,
+  ConnectionStatus,
+  AppStatus,
+  WsMessageType,
+  BackendStatus,
+  StatusColorMap,
+  ConnectionColorMap,
+  StatusTextMap,
+  ConnectionTextMap,
+} from '@/constants'
 
 const emit = defineEmits<{
   close: []
@@ -12,65 +24,67 @@ const panelContentRef = ref<HTMLElement | null>(null)
 
 const appState = useAppState()
 const isRecording = computed(() =>
-  appState.status === 'listening' || appState.status === 'transcribing' || appState.status === 'correcting' || appState.status === 'speaking'
+  appState.status === AppStatus.LISTENING ||
+  appState.status === AppStatus.TRANSCRIBING ||
+  appState.status === AppStatus.CORRECTING ||
+  appState.status === AppStatus.SPEAKING
 )
 const bufferDuration = ref(0)
 
-const statusColor = computed(() => {
-  switch (appState.status) {
-    case 'speaking': return 'orange'
-    case 'transcribing': return 'blue'
-    case 'correcting': return 'purple'
-    case 'listening': return 'green'
-    case 'error': return 'red'
-    default: return 'default'
-  }
-})
+const statusColor = computed(() => StatusColorMap[appState.status] || 'default')
 
-const statusText = computed(() => {
-  switch (appState.status) {
-    case 'speaking': return 'Speaking'
-    case 'transcribing': return 'Transcribing'
-    case 'correcting': return 'Correcting'
-    case 'listening': return 'Listening'
-    case 'idle': return 'Idle'
-    case 'error': return 'Error'
-    default: return appState.status
+const statusText = computed(() => StatusTextMap[appState.status] || appState.status)
+
+const connectionColor = computed(() => ConnectionColorMap[appState.connectionStatus] || 'default')
+
+const connectionText = computed(() => {
+  if (appState.connectionStatus === ConnectionStatus.RECONNECTING) {
+    return `Reconnecting (${appState.retryCount})...`
   }
+  return ConnectionTextMap[appState.connectionStatus] || 'Disconnected'
 })
 
 onMounted(async () => {
-  try {
-    await signalController.connect('ws://127.0.0.1:8765/ws/audio')
-    signalController.onMessage((data: any) => {
-      if (data.type === 'transcription' || data.type === 'correction') {
-        appState.setTranscript(data.text, data.original_text)
-        bufferDuration.value = 0
-      } else if (data.type === 'vad') {
-        bufferDuration.value = data.buffer_duration || 0
-        if (data.is_speech) {
-          appState.setStatus('speaking')
-        }
-      } else if (data.type === 'status') {
-        if (data.status === 'recording') {
-          appState.setStatus('listening')
-        } else if (data.status === 'stopped') {
-          appState.setStatus('idle')
-        } else if (data.status === 'transcribing') {
-          appState.setStatus('transcribing')
-        } else if (data.status === 'correcting') {
-          appState.setStatus('correcting')
-        } else if (data.status === 'speaking') {
-          appState.setStatus('speaking')
-        }
-      } else if (data.type === 'error') {
-        appState.setError(data.message)
+  signalController.onConnectionStatusChange((status, retry) => {
+    const prevStatus = appState.connectionStatus
+    appState.setConnectionStatus(status, retry)
+
+    // 重连成功后重置状态，需要用户重新开始录音
+    if (status === ConnectionStatus.CONNECTED &&
+        (prevStatus === ConnectionStatus.RECONNECTING || prevStatus === ConnectionStatus.DISCONNECTED)) {
+      appState.setStatus(AppStatus.IDLE)
+      bufferDuration.value = 0
+    }
+  })
+
+  signalController.onMessage((data: any) => {
+    if (data.type === WsMessageType.TRANSCRIPTION || data.type === WsMessageType.CORRECTION) {
+      appState.setTranscript(data.text, data.original_text)
+      bufferDuration.value = 0
+    } else if (data.type === WsMessageType.VAD) {
+      bufferDuration.value = data.buffer_duration || 0
+      if (data.is_speech) {
+        appState.setStatus(AppStatus.SPEAKING)
       }
-    })
-    appState.setConnected(true)
-  } catch {
-    appState.setConnected(false)
-  }
+    } else if (data.type === WsMessageType.STATUS) {
+      if (data.status === BackendStatus.RECORDING) {
+        appState.setStatus(AppStatus.LISTENING)
+      } else if (data.status === BackendStatus.STOPPED) {
+        appState.setStatus(AppStatus.IDLE)
+      } else if (data.status === BackendStatus.TRANSCRIBING) {
+        appState.setStatus(AppStatus.TRANSCRIBING)
+      } else if (data.status === BackendStatus.CORRECTING) {
+        appState.setStatus(AppStatus.CORRECTING)
+      } else if (data.status === BackendStatus.SPEAKING) {
+        appState.setStatus(AppStatus.SPEAKING)
+      }
+    } else if (data.type === WsMessageType.ERROR) {
+      appState.setError(data.message)
+    }
+  })
+
+  const wsUrl = import.meta.env.VITE_WS_URL || WS_DEFAULT_URL
+  signalController.connect(wsUrl)
 })
 
 onUnmounted(() => {
@@ -87,13 +101,10 @@ watch(() => appState.currentTranscript, async () => {
 const toggleRecording = () => {
   if (isRecording.value) {
     signalController.stopRecording()
-    // appState.setStatus('idle') // Let the backend confirm stop, or optimistic?
-    // User existing code set it to idle.
-    appState.setStatus('idle')
+    appState.setStatus(AppStatus.IDLE)
   } else {
-    signalController.startRecording({ language: 'zh' })
-    // Optimistic update to show UI feedback immediately
-    appState.setStatus('listening')
+    signalController.startRecording({ language: RECORDING_DEFAULT_LANGUAGE })
+    appState.setStatus(AppStatus.LISTENING)
   }
 }
 </script>
@@ -120,8 +131,8 @@ const toggleRecording = () => {
 
       <div class="status-row">
         <span class="label">Connection:</span>
-        <a-tag :color="appState.isConnected ? 'success' : 'default'">
-          {{ appState.isConnected ? 'Connected' : 'Disconnected' }}
+        <a-tag :color="connectionColor">
+          {{ connectionText }}
         </a-tag>
       </div>
 
