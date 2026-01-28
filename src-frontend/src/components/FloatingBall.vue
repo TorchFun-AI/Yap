@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useAppState } from '@/stores/appState'
+import { BallColorMap, AppStatus } from '@/constants'
 
 const props = defineProps<{
   showPulse?: boolean
@@ -15,15 +16,7 @@ const appState = useAppState()
 const startPos = ref({ x: 0, y: 0 })
 const moved = ref(false)
 
-const statusColor = computed(() => {
-  switch (appState.status) {
-    case 'listening': return '#52c41a'
-    case 'processing': return '#1890ff'
-    case 'speaking': return '#722ed1'
-    case 'error': return '#ff4d4f'
-    default: return '#8c8c8c'
-  }
-})
+const statusColor = computed(() => BallColorMap[appState.status] || BallColorMap[AppStatus.IDLE])
 
 const onMouseDown = (e: MouseEvent) => {
   startPos.value = { x: e.screenX, y: e.screenY }

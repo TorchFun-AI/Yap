@@ -62,7 +62,7 @@ export const BackendStatus = {
   SPEAKING: 'speaking',
 } as const
 
-// UI 颜色映射
+// UI 颜色映射 (Ant Design Tag 颜色名)
 export const StatusColorMap: Record<string, string> = {
   [AppStatus.SPEAKING]: 'orange',
   [AppStatus.TRANSCRIBING]: 'blue',
@@ -70,6 +70,16 @@ export const StatusColorMap: Record<string, string> = {
   [AppStatus.LISTENING]: 'green',
   [AppStatus.ERROR]: 'red',
   [AppStatus.IDLE]: 'default',
+}
+
+// 悬浮球颜色映射 (HEX 颜色值)
+export const BallColorMap: Record<string, string> = {
+  [AppStatus.SPEAKING]: '#fa8c16',    // orange
+  [AppStatus.TRANSCRIBING]: '#1890ff', // blue
+  [AppStatus.CORRECTING]: '#722ed1',   // purple
+  [AppStatus.LISTENING]: '#52c41a',    // green
+  [AppStatus.ERROR]: '#ff4d4f',        // red
+  [AppStatus.IDLE]: '#8c8c8c',         // gray
 }
 
 export const ConnectionColorMap: Record<string, string> = {
