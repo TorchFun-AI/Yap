@@ -3,15 +3,51 @@ use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Manager,
 };
+use tauri_plugin_store::StoreExt;
+use serde::{Deserialize, Serialize};
+
+const STORE_PATH: &str = "settings.json";
+const WINDOW_POSITION_KEY: &str = "window_position";
+const DEFAULT_X: f64 = 100.0;
+const DEFAULT_Y: f64 = 100.0;
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct WindowPosition {
+    x: f64,
+    y: f64,
+}
 
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! Welcome to Vocistant.", name)
 }
 
+#[tauri::command]
+fn save_window_position(app: tauri::AppHandle, x: f64, y: f64) -> Result<(), String> {
+    let store = app.store(STORE_PATH).map_err(|e| e.to_string())?;
+    let pos = WindowPosition { x, y };
+    store.set(WINDOW_POSITION_KEY, serde_json::to_value(pos).unwrap());
+    store.save().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn load_window_position(app: tauri::AppHandle) -> WindowPosition {
+    let store = match app.store(STORE_PATH) {
+        Ok(s) => s,
+        Err(_) => return WindowPosition { x: DEFAULT_X, y: DEFAULT_Y },
+    };
+
+    match store.get(WINDOW_POSITION_KEY) {
+        Some(value) => serde_json::from_value(value.clone()).unwrap_or(WindowPosition { x: DEFAULT_X, y: DEFAULT_Y }),
+        None => WindowPosition { x: DEFAULT_X, y: DEFAULT_Y },
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_store::Builder::default().build())
         .setup(|app| {
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let show = MenuItem::with_id(app, "show", "Show Window", true, None::<&str>)?;
@@ -49,13 +85,6 @@ pub fn run() {
                 })
                 .build(app)?;
 
-            #[cfg(debug_assertions)]
-            {
-                if let Some(window) = app.get_webview_window("main") {
-                    window.open_devtools();
-                }
-            }
-
             #[cfg(target_os = "macos")]
             {
                 if let Some(window) = app.get_webview_window("main") {
@@ -65,7 +94,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![greet])
+        .invoke_handler(tauri::generate_handler![greet, save_window_position, load_window_position])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -9,6 +9,16 @@ export const WS_MAX_RETRY_DELAY = 30000
 // 录音默认配置
 export const RECORDING_DEFAULT_LANGUAGE = 'zh'
 
+// 窗口配置
+export const WINDOW_PANEL_WIDTH = 320
+export const WINDOW_PANEL_HEIGHT = 220
+export const WINDOW_BALL_SIZE = 60
+export const WINDOW_GAP = 8
+export const WINDOW_SHADOW = 16
+
+// 默认窗口位置
+export const DEFAULT_WINDOW_POSITION = { x: 100, y: 100 }
+
 // 控制命令
 export const ControlAction = {
   START: 'start',
