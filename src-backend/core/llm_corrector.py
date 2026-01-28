@@ -5,6 +5,7 @@ Supports OpenAI and Ollama (both via OpenAI-compatible API).
 """
 
 import os
+import re
 import logging
 from typing import Dict, Optional
 from concurrent.futures import ThreadPoolExecutor
@@ -50,6 +51,16 @@ class LLMCorrector:
         self.client = None
         self.is_initialized = False
         self.executor = ThreadPoolExecutor(max_workers=2)
+        # Regex pattern for extracting corrected text
+        self._corrected_pattern = re.compile(r'<corrected>(.*?)</corrected>', re.DOTALL)
+
+    def _extract_corrected_text(self, response: str, fallback: str) -> str:
+        """Extract text from <corrected> tag, fallback to original if not found."""
+        match = self._corrected_pattern.search(response)
+        if match:
+            return match.group(1).strip()
+        logger.warning(f"No <corrected> tag found in response: {response}")
+        return fallback
 
     def initialize(self) -> None:
         """Initialize the LLM client."""
@@ -113,7 +124,7 @@ class LLMCorrector:
 
 待校正文本: {text}
 
-只返回校正后的文本，不要其他内容。"""
+将校正后的文本放在<corrected>标签内返回，例如：<corrected>校正后的文本</corrected>"""
 
     def correct(self, text: str, language: str = "zh") -> Dict:
         """
@@ -154,7 +165,10 @@ class LLMCorrector:
                 max_tokens=500,
             )
 
-            corrected_text = response.choices[0].message.content.strip()
+            raw_response = response.choices[0].message.content.strip()
+
+            # Extract text from <corrected> tag
+            corrected_text = self._extract_corrected_text(raw_response, text)
 
             # Validate response
             if not corrected_text:
