@@ -88,7 +88,7 @@ class AudioPipeline:
 
             if transcription:
                 # Emit transcription result
-                result = {
+                transcription_result = {
                     "type": "transcription",
                     "text": transcription,
                     "is_final": False,  # Not final until correction completes
@@ -96,6 +96,10 @@ class AudioPipeline:
 
                 # Step 2: LLM Correction
                 if self.llm and self.llm.enabled:
+                    # Send intermediate transcription result immediately
+                    if self._on_status:
+                        self._on_status(transcription_result)
+
                     self._emit_status("correcting", original_text=transcription)
                     t_llm_start = time.perf_counter()
                     correction_result = self.llm.correct(
@@ -117,6 +121,7 @@ class AudioPipeline:
                         result["correction_error"] = correction_result["error"]
                 else:
                     # LLM not available, transcription is final
+                    result = transcription_result
                     result["is_final"] = True
 
             t_end = time.perf_counter()
