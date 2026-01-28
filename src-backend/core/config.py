@@ -4,6 +4,15 @@ Centralized configuration for all pipeline components.
 """
 
 import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load .env from project root
+# Structure: project_root/.env
+# This file: project_root/src-backend/core/config.py
+root_dir = Path(__file__).resolve().parent.parent
+env_path = root_dir / ".env"
+load_dotenv(env_path)
 
 
 class Config:
