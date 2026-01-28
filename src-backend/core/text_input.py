@@ -95,7 +95,7 @@ class TextInput:
         """Input text instantly without delay."""
         return self.input_text(text, interval=0)
 
-    def input_text_typewriter(self, text: str, interval: float = 0.03) -> bool:
+    def input_text_typewriter(self, text: str, interval: float = 0.016) -> bool:
         """Input text with typewriter effect."""
         return self.input_text(text, interval=interval)
 
