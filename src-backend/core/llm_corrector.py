@@ -9,6 +9,7 @@ import logging
 from typing import Dict, Optional
 from concurrent.futures import ThreadPoolExecutor
 import asyncio
+from openai import OpenAI
 
 logger = logging.getLogger(__name__)
 
@@ -60,8 +61,6 @@ class LLMCorrector:
             return
 
         try:
-            from openai import OpenAI
-
             if self.provider == "openai":
                 self.client = OpenAI(
                     api_key=self.api_key,
@@ -81,9 +80,6 @@ class LLMCorrector:
             self.is_initialized = True
             logger.info(f"LLM corrector initialized with provider: {self.provider}, model: {self.model}")
 
-        except ImportError:
-            logger.error("openai package not installed. Run: uv add openai")
-            self.enabled = False
         except Exception as e:
             logger.error(f"Failed to initialize LLM corrector: {e}")
             self.enabled = False
