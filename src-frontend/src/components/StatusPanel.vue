@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { CloseOutlined, AudioOutlined, AudioMutedOutlined } from '@ant-design/icons-vue'
+import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { useAppState } from '@/stores/appState'
 import { signalController } from '@/services/signalController'
 import {
@@ -30,6 +31,7 @@ const isRecording = computed(() =>
   appState.status === AppStatus.SPEAKING
 )
 const bufferDuration = ref(0)
+let unlistenShortcut: UnlistenFn | null = null
 
 const statusColor = computed(() => StatusColorMap[appState.status] || 'default')
 
@@ -45,6 +47,13 @@ const connectionText = computed(() => {
 })
 
 onMounted(async () => {
+  // 监听全局快捷键事件
+  unlistenShortcut = await listen('toggle_recording', () => {
+    if (appState.isConnected) {
+      toggleRecording()
+    }
+  })
+
   signalController.onConnectionStatusChange((status, retry) => {
     const prevStatus = appState.connectionStatus
     appState.setConnectionStatus(status, retry)
@@ -88,6 +97,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  unlistenShortcut?.()
   signalController.disconnect()
 })
 

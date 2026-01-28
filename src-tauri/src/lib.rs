@@ -1,8 +1,9 @@
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Manager,
+    Emitter, Manager,
 };
+use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 use tauri_plugin_store::StoreExt;
 use serde::{Deserialize, Serialize};
 
@@ -10,6 +11,7 @@ const STORE_PATH: &str = "settings.json";
 const WINDOW_POSITION_KEY: &str = "window_position";
 const DEFAULT_X: f64 = 100.0;
 const DEFAULT_Y: f64 = 100.0;
+const SHORTCUT_TOGGLE_RECORDING: &str = "toggle_recording";
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct WindowPosition {
@@ -48,6 +50,7 @@ fn load_window_position(app: tauri::AppHandle) -> WindowPosition {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_store::Builder::default().build())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(|app| {
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let show = MenuItem::with_id(app, "show", "Show Window", true, None::<&str>)?;
@@ -91,6 +94,15 @@ pub fn run() {
                     let _ = window.set_shadow(false);
                 }
             }
+
+            // 注册全局快捷键 Option+F5
+            let shortcut = Shortcut::new(Some(Modifiers::ALT), Code::F5);
+            let app_handle = app.handle().clone();
+            app.global_shortcut().on_shortcut(shortcut, move |_app, _shortcut, event| {
+                if event.state == ShortcutState::Pressed {
+                    let _ = app_handle.emit(SHORTCUT_TOGGLE_RECORDING, ());
+                }
+            })?;
 
             Ok(())
         })
