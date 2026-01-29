@@ -137,11 +137,12 @@ class AudioPipeline:
                 current_text = transcription
                 original_text = transcription
 
+                # Send intermediate transcription result immediately
+                if self._on_status:
+                    self._on_status(transcription_result)
+
                 # Step 2: LLM Correction (if enabled)
                 if self._correction_enabled and self.llm and self.llm.enabled:
-                    # Send intermediate transcription result immediately
-                    if self._on_status:
-                        self._on_status(transcription_result)
 
                     self._emit_status("correcting", original_text=transcription)
                     t_llm_start = time.perf_counter()
