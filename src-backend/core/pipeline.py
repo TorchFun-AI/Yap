@@ -27,6 +27,10 @@ class AudioPipeline:
         self.translator = LLMTranslator() if self.config.llm_enabled else None
         self.text_input = TextInput()
         self.audio_buffer = bytearray()
+        # Pre-buffer to capture audio before VAD detects speech (100ms at 16kHz, 16-bit = 3200 bytes)
+        self._pre_buffer = bytearray()
+        self._pre_buffer_size = 32 * 200  # 200ms * 16000Hz * 2 bytes
+        self._speech_just_started = False
         self.is_initialized = False
         self._on_status = on_status
         # Runtime config (can be changed per session)
@@ -75,10 +79,24 @@ class AudioPipeline:
 
         vad_result = self.vad.process_chunk(audio_bytes)
 
+        # Track if speech just started (first frame of speech)
+        speech_just_started = vad_result["is_speech"] and not self._speech_just_started
+
         if vad_result["is_speech"]:
+            # If speech just started, prepend the pre-buffer to capture audio before VAD detection
+            if speech_just_started:
+                self.audio_buffer.extend(self._pre_buffer)
+                self._speech_just_started = True
             self.audio_buffer.extend(audio_bytes)
             buffer_duration = len(self.audio_buffer) / 32000
             self._emit_status("speaking", buffer_duration=buffer_duration)
+        else:
+            # Maintain rolling pre-buffer when not in speech
+            if not self._speech_just_started:
+                self._pre_buffer.extend(audio_bytes)
+                # Keep only the last 100ms
+                if len(self._pre_buffer) > self._pre_buffer_size:
+                    self._pre_buffer = self._pre_buffer[-self._pre_buffer_size:]
 
         result = {
             "type": "vad",
@@ -95,6 +113,8 @@ class AudioPipeline:
             audio_int16 = np.frombuffer(bytes(self.audio_buffer), dtype=np.int16)
             audio_float32 = audio_int16.astype(np.float32) / 32768.0
             self.audio_buffer.clear()
+            self._pre_buffer.clear()
+            self._speech_just_started = False
             self.vad.reset()
 
             # Step 1: ASR Transcription
@@ -171,4 +191,6 @@ class AudioPipeline:
     def reset(self) -> None:
         """Reset pipeline state."""
         self.audio_buffer.clear()
+        self._pre_buffer.clear()
+        self._speech_just_started = False
         self.vad.reset()
