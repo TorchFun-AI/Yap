@@ -113,6 +113,7 @@ export const ConnectionTextMap: Record<string, string> = {
 // 翻译目标语言预设列表
 export const TRANSLATE_LANGUAGES = [
   { value: '', label: '不翻译' },
+  { value: '中文', label: '中文' },
   { value: 'English', label: 'English' },
   { value: '日本語', label: '日本語' },
   { value: '한국어', label: '한국어' },
