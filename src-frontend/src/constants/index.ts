@@ -7,7 +7,7 @@ export const WS_BASE_RETRY_DELAY = 1000
 export const WS_MAX_RETRY_DELAY = 30000
 
 // 录音默认配置
-export const RECORDING_DEFAULT_LANGUAGE = 'zh'
+export const RECORDING_DEFAULT_LANGUAGE = 'auto'
 
 // 窗口配置
 export const WINDOW_PANEL_WIDTH = 320
@@ -39,6 +39,7 @@ export const AppStatus = {
   LISTENING: 'listening',
   TRANSCRIBING: 'transcribing',
   CORRECTING: 'correcting',
+  TRANSLATING: 'translating',
   SPEAKING: 'speaking',
   ERROR: 'error',
 } as const
@@ -59,6 +60,7 @@ export const BackendStatus = {
   STOPPED: 'stopped',
   TRANSCRIBING: 'transcribing',
   CORRECTING: 'correcting',
+  TRANSLATING: 'translating',
   SPEAKING: 'speaking',
 } as const
 
@@ -67,6 +69,7 @@ export const StatusColorMap: Record<string, string> = {
   [AppStatus.SPEAKING]: 'orange',
   [AppStatus.TRANSCRIBING]: 'blue',
   [AppStatus.CORRECTING]: 'purple',
+  [AppStatus.TRANSLATING]: 'cyan',
   [AppStatus.LISTENING]: 'green',
   [AppStatus.ERROR]: 'red',
   [AppStatus.IDLE]: 'default',
@@ -77,6 +80,7 @@ export const BallColorMap: Record<string, string> = {
   [AppStatus.SPEAKING]: '#fa8c16',    // orange
   [AppStatus.TRANSCRIBING]: '#1890ff', // blue
   [AppStatus.CORRECTING]: '#722ed1',   // purple
+  [AppStatus.TRANSLATING]: '#13c2c2',  // cyan
   [AppStatus.LISTENING]: '#52c41a',    // green
   [AppStatus.ERROR]: '#ff4d4f',        // red
   [AppStatus.IDLE]: '#8c8c8c',         // gray
@@ -94,6 +98,7 @@ export const StatusTextMap: Record<string, string> = {
   [AppStatus.SPEAKING]: 'Speaking',
   [AppStatus.TRANSCRIBING]: 'Transcribing',
   [AppStatus.CORRECTING]: 'Correcting',
+  [AppStatus.TRANSLATING]: 'Translating',
   [AppStatus.LISTENING]: 'Listening',
   [AppStatus.IDLE]: 'Idle',
   [AppStatus.ERROR]: 'Error',
@@ -104,3 +109,24 @@ export const ConnectionTextMap: Record<string, string> = {
   [ConnectionStatus.CONNECTING]: 'Connecting...',
   [ConnectionStatus.DISCONNECTED]: 'Disconnected',
 }
+
+// 翻译目标语言预设列表
+export const TRANSLATE_LANGUAGES = [
+  { value: '', label: '不翻译' },
+  { value: 'English', label: 'English' },
+  { value: '日本語', label: '日本語' },
+  { value: '한국어', label: '한국어' },
+  { value: 'Français', label: 'Français' },
+  { value: 'Deutsch', label: 'Deutsch' },
+  { value: 'Español', label: 'Español' },
+] as const
+
+// ASR 识别语言预设列表 (FunASR 支持的语言)
+export const ASR_LANGUAGES = [
+  { value: 'auto', label: '自动检测' },
+  { value: 'zh', label: '中文' },
+  { value: 'en', label: 'English' },
+  { value: 'ja', label: '日本語' },
+  { value: 'ko', label: '한국어' },
+  { value: 'yue', label: '粤语' },
+] as const

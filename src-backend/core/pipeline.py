@@ -1,6 +1,6 @@
 """
 Audio Processing Pipeline
-Coordinates VAD, ASR, and LLM correction engines for real-time voice processing.
+Coordinates VAD, ASR, and LLM correction/translation engines for real-time voice processing.
 """
 
 import logging
@@ -9,6 +9,7 @@ import numpy as np
 from .vad_engine import VADEngine
 from .asr_engine import ASREngine
 from .llm_corrector import LLMCorrector
+from .llm_translator import LLMTranslator
 from .text_input import TextInput
 from .config import Config
 
@@ -23,10 +24,22 @@ class AudioPipeline:
         self.vad = VADEngine()
         self.asr = ASREngine()
         self.llm = LLMCorrector() if self.config.llm_enabled else None
+        self.translator = LLMTranslator() if self.config.llm_enabled else None
         self.text_input = TextInput()
         self.audio_buffer = bytearray()
         self.is_initialized = False
         self._on_status = on_status
+        # Runtime config (can be changed per session)
+        self._correction_enabled = True
+        self._target_language = None
+        self._asr_language = None
+
+    def set_config(self, correction_enabled: bool = True, target_language: str = None, asr_language: str = None):
+        """Set runtime configuration for correction and translation."""
+        self._correction_enabled = correction_enabled
+        self._target_language = target_language if target_language else None
+        self._asr_language = asr_language if asr_language else None
+        logger.info(f"Pipeline config: asr_language={asr_language}, correction={correction_enabled}, target_language={target_language}")
 
     def _emit_status(self, status: str, **kwargs):
         """Emit status update."""
@@ -41,6 +54,8 @@ class AudioPipeline:
         self.asr.initialize()
         if self.llm:
             self.llm.initialize()
+        if self.translator:
+            self.translator.initialize()
         self.text_input.initialize()
         self.is_initialized = True
         logger.info("Pipeline initialized")
@@ -85,7 +100,9 @@ class AudioPipeline:
             # Step 1: ASR Transcription
             self._emit_status("transcribing", audio_duration=audio_duration)
             t_asr_start = time.perf_counter()
-            transcription = self.asr.transcribe(audio_float32)
+            # Use configured language, 'auto' means let model detect
+            asr_lang = None if self._asr_language == 'auto' else self._asr_language
+            transcription = self.asr.transcribe(audio_float32, language=asr_lang)
             t_asr_end = time.perf_counter()
             logger.info(f"[TIMING] ASR completed in {(t_asr_end - t_asr_start)*1000:.0f}ms, text='{transcription}'")
 
@@ -94,47 +111,56 @@ class AudioPipeline:
                 transcription_result = {
                     "type": "transcription",
                     "text": transcription,
-                    "is_final": False,  # Not final until correction completes
+                    "is_final": False,  # Not final until all processing completes
                 }
 
-                # Step 2: LLM Correction
-                if self.llm and self.llm.enabled:
+                current_text = transcription
+                original_text = transcription
+
+                # Step 2: LLM Correction (if enabled)
+                if self._correction_enabled and self.llm and self.llm.enabled:
                     # Send intermediate transcription result immediately
                     if self._on_status:
                         self._on_status(transcription_result)
 
                     self._emit_status("correcting", original_text=transcription)
                     t_llm_start = time.perf_counter()
+                    # Use configured ASR language for correction context
+                    correction_lang = self._asr_language if self._asr_language and self._asr_language != 'auto' else self.asr.default_language
                     correction_result = self.llm.correct(
                         transcription,
-                        language=self.asr.default_language
+                        language=correction_lang
                     )
                     t_llm_end = time.perf_counter()
                     logger.info(f"[TIMING] LLM correction completed in {(t_llm_end - t_llm_start)*1000:.0f}ms")
 
-                    result = {
-                        "type": "correction",
-                        "text": correction_result.get("corrected_text", transcription),
-                        "original_text": transcription,
-                        "is_corrected": correction_result.get("is_corrected", False),
-                        "is_final": True,
-                    }
+                    current_text = correction_result.get("corrected_text", transcription)
 
-                    if "error" in correction_result:
-                        result["correction_error"] = correction_result["error"]
+                # Step 3: LLM Translation (if target language specified)
+                if self._target_language and self.translator:
+                    self._emit_status("translating", text=current_text)
+                    t_trans_start = time.perf_counter()
+                    translation_result = self.translator.translate(
+                        current_text,
+                        self._target_language
+                    )
+                    t_trans_end = time.perf_counter()
+                    logger.info(f"[TIMING] LLM translation completed in {(t_trans_end - t_trans_start)*1000:.0f}ms")
 
-                    # Step 3: Input text at cursor position
-                    final_text = result["text"]
-                    self._emit_status("inputting", text=final_text)
-                    self.text_input.input_text_typewriter(final_text)
-                else:
-                    # LLM not available, transcription is final
-                    result = transcription_result
-                    result["is_final"] = True
+                    current_text = translation_result.get("translated_text", current_text)
 
-                    # Input transcription directly
-                    self._emit_status("inputting", text=transcription)
-                    self.text_input.input_text_typewriter(transcription)
+                # Build final result
+                result = {
+                    "type": "correction",
+                    "text": current_text,
+                    "original_text": original_text,
+                    "is_corrected": current_text != original_text,
+                    "is_final": True,
+                }
+
+                # Step 4: Input text at cursor position
+                self._emit_status("inputting", text=current_text)
+                self.text_input.input_text_typewriter(current_text)
 
             t_end = time.perf_counter()
             logger.info(f"[TIMING] Total processing time: {(t_end - t_start)*1000:.0f}ms")

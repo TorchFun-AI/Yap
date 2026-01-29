@@ -15,6 +15,8 @@ import {
   ConnectionColorMap,
   StatusTextMap,
   ConnectionTextMap,
+  TRANSLATE_LANGUAGES,
+  ASR_LANGUAGES,
 } from '@/constants'
 
 const emit = defineEmits<{
@@ -28,9 +30,13 @@ const isRecording = computed(() =>
   appState.status === AppStatus.LISTENING ||
   appState.status === AppStatus.TRANSCRIBING ||
   appState.status === AppStatus.CORRECTING ||
+  appState.status === AppStatus.TRANSLATING ||
   appState.status === AppStatus.SPEAKING
 )
 const bufferDuration = ref(0)
+const asrLanguage = ref(RECORDING_DEFAULT_LANGUAGE)
+const correctionEnabled = ref(true)
+const targetLanguage = ref('')
 let unlistenShortcut: UnlistenFn | null = null
 
 const statusColor = computed(() => StatusColorMap[appState.status] || 'default')
@@ -84,6 +90,8 @@ onMounted(async () => {
         appState.setStatus(AppStatus.TRANSCRIBING)
       } else if (data.status === BackendStatus.CORRECTING) {
         appState.setStatus(AppStatus.CORRECTING)
+      } else if (data.status === BackendStatus.TRANSLATING) {
+        appState.setStatus(AppStatus.TRANSLATING)
       } else if (data.status === BackendStatus.SPEAKING) {
         appState.setStatus(AppStatus.SPEAKING)
       }
@@ -113,7 +121,11 @@ const toggleRecording = () => {
     signalController.stopRecording()
     appState.setStatus(AppStatus.IDLE)
   } else {
-    signalController.startRecording({ language: RECORDING_DEFAULT_LANGUAGE })
+    signalController.startRecording({
+      language: asrLanguage.value,
+      correctionEnabled: correctionEnabled.value,
+      targetLanguage: targetLanguage.value || undefined,
+    })
     appState.setStatus(AppStatus.LISTENING)
   }
 }
@@ -144,6 +156,38 @@ const toggleRecording = () => {
         <a-tag :color="connectionColor">
           {{ connectionText }}
         </a-tag>
+      </div>
+
+      <div class="config-row">
+        <span class="label">ASR:</span>
+        <a-select
+          v-model:value="asrLanguage"
+          :disabled="isRecording"
+          :options="ASR_LANGUAGES"
+          size="small"
+          style="width: 120px"
+        />
+      </div>
+
+      <div class="config-row">
+        <span class="label">Correction:</span>
+        <a-switch
+          v-model:checked="correctionEnabled"
+          :disabled="isRecording"
+          size="small"
+        />
+      </div>
+
+      <div class="config-row">
+        <span class="label">Translate:</span>
+        <a-select
+          v-model:value="targetLanguage"
+          :disabled="isRecording"
+          :options="TRANSLATE_LANGUAGES"
+          size="small"
+          style="width: 120px"
+          placeholder="不翻译"
+        />
       </div>
 
       <div class="record-control">
@@ -201,7 +245,8 @@ const toggleRecording = () => {
   flex: 1;
 }
 .status-row { display: flex; align-items: center; margin-bottom: 12px; }
-.label { font-weight: 500; margin-right: 8px; color: #666; }
+.config-row { display: flex; align-items: center; margin-bottom: 8px; }
+.label { font-weight: 500; margin-right: 8px; color: #666; min-width: 80px; }
 .record-control { display: flex; align-items: center; gap: 12px; margin: 16px 0; }
 .record-hint { color: #666; font-size: 14px; }
 .buffer-info { margin-left: 8px; color: #999; font-size: 12px; }

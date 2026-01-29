@@ -94,7 +94,11 @@ export class SignalController {
     this.connectionStatusHandler?.(status, this.retryCount)
   }
 
-  startRecording(config: { language?: string } = {}): void {
+  startRecording(config: {
+    language?: string
+    correctionEnabled?: boolean
+    targetLanguage?: string
+  } = {}): void {
     if (this.ws?.readyState !== WebSocket.OPEN) return
     this.ws.send(JSON.stringify({
       type: WsMessageType.CONTROL,

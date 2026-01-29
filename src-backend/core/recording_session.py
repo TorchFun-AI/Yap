@@ -32,6 +32,17 @@ class RecordingSession:
         # Initialize pipeline (loads ASR model) on start
         self._pipeline.initialize()
 
+        # Apply runtime config
+        if config:
+            asr_language = config.get("language", "auto")
+            correction_enabled = config.get("correctionEnabled", True)
+            target_language = config.get("targetLanguage", None)
+            self._pipeline.set_config(
+                correction_enabled=correction_enabled,
+                target_language=target_language,
+                asr_language=asr_language
+            )
+
         self._audio_capture.start(callback=self._on_audio_chunk)
         self._on_result({"type": "status", "status": "recording"})
 

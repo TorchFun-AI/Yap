@@ -124,7 +124,7 @@ class LLMCorrector:
 
 待校正文本: {text}
 
-将校正后的文本放在<corrected>标签内返回，例如：<corrected>校正后的文本</corrected>"""
+必须注意：将校正后的文本放在<corrected>标签内返回，例如：<corrected>校正后的文本</corrected>"""
 
     def correct(self, text: str, language: str = "zh") -> Dict:
         """
