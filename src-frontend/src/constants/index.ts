@@ -36,6 +36,7 @@ export const ConnectionStatus = {
 // 应用状态
 export const AppStatus = {
   IDLE: 'idle',
+  STARTING: 'starting',
   LISTENING: 'listening',
   TRANSCRIBING: 'transcribing',
   CORRECTING: 'correcting',
@@ -56,6 +57,7 @@ export const WsMessageType = {
 
 // 后端状态映射
 export const BackendStatus = {
+  STARTING: 'starting',
   RECORDING: 'recording',
   STOPPED: 'stopped',
   TRANSCRIBING: 'transcribing',
@@ -66,6 +68,7 @@ export const BackendStatus = {
 
 // UI 颜色映射 (Ant Design Tag 颜色名)
 export const StatusColorMap: Record<string, string> = {
+  [AppStatus.STARTING]: 'processing',
   [AppStatus.SPEAKING]: 'orange',
   [AppStatus.TRANSCRIBING]: 'blue',
   [AppStatus.CORRECTING]: 'purple',
@@ -77,6 +80,7 @@ export const StatusColorMap: Record<string, string> = {
 
 // 悬浮球颜色映射 (HEX 颜色值)
 export const BallColorMap: Record<string, string> = {
+  [AppStatus.STARTING]: '#1890ff',    // blue (processing)
   [AppStatus.SPEAKING]: '#fa8c16',    // orange
   [AppStatus.TRANSCRIBING]: '#1890ff', // blue
   [AppStatus.CORRECTING]: '#722ed1',   // purple
@@ -95,6 +99,7 @@ export const ConnectionColorMap: Record<string, string> = {
 
 // UI 文本映射
 export const StatusTextMap: Record<string, string> = {
+  [AppStatus.STARTING]: 'Starting',
   [AppStatus.SPEAKING]: 'Speaking',
   [AppStatus.TRANSCRIBING]: 'Transcribing',
   [AppStatus.CORRECTING]: 'Correcting',

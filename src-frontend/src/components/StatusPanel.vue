@@ -27,6 +27,7 @@ const panelContentRef = ref<HTMLElement | null>(null)
 
 const appState = useAppState()
 const isRecording = computed(() =>
+  appState.status === AppStatus.STARTING ||
   appState.status === AppStatus.LISTENING ||
   appState.status === AppStatus.TRANSCRIBING ||
   appState.status === AppStatus.CORRECTING ||
@@ -82,7 +83,9 @@ onMounted(async () => {
         appState.setStatus(AppStatus.SPEAKING)
       }
     } else if (data.type === WsMessageType.STATUS) {
-      if (data.status === BackendStatus.RECORDING) {
+      if (data.status === BackendStatus.STARTING) {
+        appState.setStatus(AppStatus.STARTING)
+      } else if (data.status === BackendStatus.RECORDING) {
         appState.setStatus(AppStatus.LISTENING)
       } else if (data.status === BackendStatus.STOPPED) {
         appState.setStatus(AppStatus.IDLE)
@@ -126,7 +129,7 @@ const toggleRecording = () => {
       correctionEnabled: correctionEnabled.value,
       targetLanguage: targetLanguage.value || undefined,
     })
-    appState.setStatus(AppStatus.LISTENING)
+    appState.setStatus(AppStatus.STARTING)
   }
 }
 </script>

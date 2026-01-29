@@ -29,6 +29,9 @@ class RecordingSession:
         self._is_running = True
         self._loop = asyncio.get_event_loop()
 
+        # Notify starting status before model loading
+        self._on_result({"type": "status", "status": "starting"})
+
         # Initialize pipeline (loads ASR model) on start
         self._pipeline.initialize()
 
