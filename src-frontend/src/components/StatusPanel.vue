@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { CloseOutlined, AudioOutlined, AudioMutedOutlined } from '@ant-design/icons-vue'
+import { AudioOutlined, AudioMutedOutlined } from '@ant-design/icons-vue'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { useAppState } from '@/stores/appState'
 import { signalController } from '@/services/signalController'
@@ -12,11 +12,10 @@ import {
   WsMessageType,
   BackendStatus,
   StatusColorMap,
-  ConnectionColorMap,
   StatusTextMap,
-  ConnectionTextMap,
   TRANSLATE_LANGUAGES,
   ASR_LANGUAGES,
+  DesignColors,
 } from '@/constants'
 
 const emit = defineEmits<{
@@ -40,21 +39,24 @@ const correctionEnabled = ref(true)
 const targetLanguage = ref('')
 let unlistenShortcut: UnlistenFn | null = null
 
-const statusColor = computed(() => StatusColorMap[appState.status] || 'default')
-
 const statusText = computed(() => StatusTextMap[appState.status] || appState.status)
-
-const connectionColor = computed(() => ConnectionColorMap[appState.connectionStatus] || 'default')
 
 const connectionText = computed(() => {
   if (appState.connectionStatus === ConnectionStatus.RECONNECTING) {
     return `Reconnecting (${appState.retryCount})...`
   }
-  return ConnectionTextMap[appState.connectionStatus] || 'Disconnected'
+  if (appState.connectionStatus === ConnectionStatus.CONNECTED) {
+    return 'Connected'
+  }
+  if (appState.connectionStatus === ConnectionStatus.CONNECTING) {
+    return 'Connecting...'
+  }
+  return 'Disconnected'
 })
 
+const isConnected = computed(() => appState.connectionStatus === ConnectionStatus.CONNECTED)
+
 onMounted(async () => {
-  // 监听全局快捷键事件
   unlistenShortcut = await listen('toggle_recording', () => {
     if (appState.isConnected) {
       toggleRecording()
@@ -65,7 +67,6 @@ onMounted(async () => {
     const prevStatus = appState.connectionStatus
     appState.setConnectionStatus(status, retry)
 
-    // 重连成功后重置状态，需要用户重新开始录音
     if (status === ConnectionStatus.CONNECTED &&
         (prevStatus === ConnectionStatus.RECONNECTING || prevStatus === ConnectionStatus.DISCONNECTED)) {
       appState.setStatus(AppStatus.IDLE)
@@ -136,87 +137,98 @@ const toggleRecording = () => {
 
 <template>
   <div class="status-panel">
-    <div class="panel-header">
-      <h3>Vocistant</h3>
-      <a-button type="text" @click="emit('close')">
-        <template #icon>
-          <CloseOutlined />
-        </template>
-      </a-button>
-    </div>
-
-    <div class="panel-content" ref="panelContentRef">
-      <div class="status-row">
-        <span class="label">Status:</span>
-        <a-tag :color="statusColor">
-          {{ statusText }}
-        </a-tag>
+    <!-- Action Bar -->
+    <div class="action-bar">
+      <div class="action-bar-left">
+        <span class="status-indicator" :class="{ connected: isConnected }" />
+        <span class="status-text">{{ connectionText }}</span>
+        <span class="status-divider">|</span>
+        <span class="status-text">{{ statusText }}</span>
         <span v-if="bufferDuration > 0" class="buffer-info">{{ bufferDuration.toFixed(1) }}s</span>
       </div>
+      <button
+        class="mic-button"
+        :class="{ active: isRecording }"
+        :disabled="!appState.isConnected"
+        @click="toggleRecording"
+      >
+        <AudioMutedOutlined v-if="isRecording" />
+        <AudioOutlined v-else />
+      </button>
+    </div>
 
-      <div class="status-row">
-        <span class="label">Connection:</span>
-        <a-tag :color="connectionColor">
-          {{ connectionText }}
-        </a-tag>
+    <!-- Panel Content -->
+    <div class="panel-content" ref="panelContentRef">
+
+      <!-- Config Section -->
+      <div class="section config-section">
+        <div class="config-item">
+          <svg class="config-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M2 12h20" />
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+          </svg>
+          <span class="config-label">Language</span>
+          <a-select
+            v-model:value="asrLanguage"
+            :disabled="isRecording"
+            :options="ASR_LANGUAGES"
+            size="small"
+            class="config-select"
+            :dropdown-style="{ background: '#2c2c2e' }"
+          />
+        </div>
+
+        <div class="config-item">
+          <svg class="config-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M12 20h9" />
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+          </svg>
+          <span class="config-label">Correction</span>
+          <a-switch
+            v-model:checked="correctionEnabled"
+            :disabled="isRecording"
+            size="small"
+          />
+        </div>
+
+        <div class="config-item">
+          <svg class="config-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M5 8l6 6" />
+            <path d="M4 14l6-6 2-3" />
+            <path d="M2 5h12" />
+            <path d="M7 2h1" />
+            <path d="M22 22l-5-10-5 10" />
+            <path d="M14 18h6" />
+          </svg>
+          <span class="config-label">Translate</span>
+          <a-select
+            v-model:value="targetLanguage"
+            :disabled="isRecording"
+            :options="TRANSLATE_LANGUAGES"
+            size="small"
+            class="config-select"
+            placeholder="Off"
+            :dropdown-style="{ background: '#2c2c2e' }"
+          />
+        </div>
       </div>
 
-      <div class="config-row">
-        <span class="label">ASR:</span>
-        <a-select
-          v-model:value="asrLanguage"
-          :disabled="isRecording"
-          :options="ASR_LANGUAGES"
-          size="small"
-          style="width: 120px"
-        />
+      <!-- Transcript Section -->
+      <div class="section transcript-section" v-if="appState.currentTranscript">
+        <p class="transcript-text">{{ appState.currentTranscript }}</p>
       </div>
 
-      <div class="config-row">
-        <span class="label">Correction:</span>
-        <a-switch
-          v-model:checked="correctionEnabled"
-          :disabled="isRecording"
-          size="small"
-        />
-      </div>
-
-      <div class="config-row">
-        <span class="label">Translate:</span>
-        <a-select
-          v-model:value="targetLanguage"
-          :disabled="isRecording"
-          :options="TRANSLATE_LANGUAGES"
-          size="small"
-          style="width: 120px"
-          placeholder="不翻译"
-        />
-      </div>
-
-      <div class="record-control">
-        <a-button
-          type="primary"
-          shape="circle"
-          size="large"
-          :danger="isRecording"
-          :disabled="!appState.isConnected"
-          @click="toggleRecording"
-        >
-          <template #icon>
-            <AudioMutedOutlined v-if="isRecording" />
-            <AudioOutlined v-else />
-          </template>
-        </a-button>
-        <span class="record-hint">{{ isRecording ? 'Stop' : 'Start' }} Recording</span>
-      </div>
-
-      <div class="transcript-area" v-if="appState.currentTranscript">
-        <span class="label">Transcript:</span>
-        <p>{{ appState.currentTranscript }}</p>
-      </div>
-
-      <div class="error-area" v-if="appState.errorMessage">
-        <a-alert :message="appState.errorMessage" type="error" show-icon />
+      <!-- Error Section -->
+      <div class="section error-section" v-if="appState.errorMessage">
+        <div class="error-content">
+          <svg class="error-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <span>{{ appState.errorMessage }}</span>
+        </div>
       </div>
     </div>
   </div>
@@ -226,34 +238,211 @@ const toggleRecording = () => {
 .status-panel {
   width: 320px;
   height: 100%;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
+  background: #1C1C1E;
+  border-radius: 24px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
-.panel-header {
+
+/* Action Bar */
+.action-bar {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
-  border-bottom: 1px solid #f0f0f0;
+  justify-content: space-between;
+  padding: 8px;
+  margin: 12px 12px 0;
+  background: rgba(18, 18, 18, 0.8);
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.action-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.status-indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transition: background 0.3s ease;
   flex-shrink: 0;
 }
-.panel-header h3 { margin: 0; font-size: 16px; }
+
+.status-indicator.connected {
+  background: #52c41a;
+  box-shadow: 0 0 8px rgba(82, 196, 26, 0.5);
+}
+
+.status-text {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.status-divider {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.buffer-info {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 11px;
+  margin-left: auto;
+  padding-right: 8px;
+}
+
+.mic-button {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: #2979FF;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 16px;
+}
+
+.mic-button:hover:not(:disabled) {
+  background: #448AFF;
+  transform: scale(1.05);
+}
+
+.mic-button:disabled {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.3);
+  cursor: not-allowed;
+}
+
+.mic-button.active {
+  background: #ff4d4f;
+}
+
+.mic-button.active:hover:not(:disabled) {
+  background: #ff7875;
+}
+
+/* Panel Content */
 .panel-content {
   padding: 16px;
   overflow-y: auto;
   flex: 1;
 }
-.status-row { display: flex; align-items: center; margin-bottom: 12px; }
-.config-row { display: flex; align-items: center; margin-bottom: 8px; }
-.label { font-weight: 500; margin-right: 8px; color: #666; min-width: 80px; }
-.record-control { display: flex; align-items: center; gap: 12px; margin: 16px 0; }
-.record-hint { color: #666; font-size: 14px; }
-.buffer-info { margin-left: 8px; color: #999; font-size: 12px; }
-.transcript-area { margin-top: 16px; padding-top: 16px; border-top: 1px solid #f0f0f0; }
-.transcript-area p { margin: 8px 0 0; color: #333; }
-.error-area { margin-top: 16px; }
+
+.section {
+  margin-bottom: 16px;
+}
+
+/* Config Section */
+.config-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: rgba(44, 44, 46, 0.5);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.config-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.config-icon {
+  width: 18px;
+  height: 18px;
+  color: rgba(255, 255, 255, 0.5);
+  flex-shrink: 0;
+}
+
+.config-label {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
+  flex: 1;
+}
+
+.config-select {
+  width: 110px;
+}
+
+/* Transcript Section */
+.transcript-section {
+  background: rgba(44, 44, 46, 0.5);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.transcript-text {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* Error Section */
+.error-section {
+  background: rgba(255, 77, 79, 0.1);
+  border-radius: 12px;
+  padding: 12px 16px;
+  border: 1px solid rgba(255, 77, 79, 0.3);
+}
+
+.error-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #ff7875;
+  font-size: 13px;
+}
+
+.error-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* Dark theme overrides for Ant Design */
+:deep(.ant-select) {
+  background: transparent;
+}
+
+:deep(.ant-select-selector) {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 8px !important;
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+:deep(.ant-select-arrow) {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
+:deep(.ant-select-selection-item) {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+:deep(.ant-select-disabled .ant-select-selector) {
+  background: rgba(255, 255, 255, 0.04) !important;
+  color: rgba(255, 255, 255, 0.3) !important;
+}
+
+:deep(.ant-switch) {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+:deep(.ant-switch-checked) {
+  background: #2979FF !important;
+}
 </style>

@@ -46,6 +46,17 @@ fn load_window_position(app: tauri::AppHandle) -> WindowPosition {
     }
 }
 
+/// 原子操作：同时设置窗口大小和位置，减少闪烁
+#[tauri::command]
+fn set_window_bounds(window: tauri::Window, x: f64, y: f64, width: f64, height: f64) -> Result<(), String> {
+    use tauri::{LogicalPosition, LogicalSize};
+
+    // 在 Rust 层面连续调用，减少 IPC 开销
+    window.set_size(LogicalSize::new(width, height)).map_err(|e| e.to_string())?;
+    window.set_position(LogicalPosition::new(x, y)).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -106,7 +117,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![greet, save_window_position, load_window_position])
+        .invoke_handler(tauri::generate_handler![greet, save_window_position, load_window_position, set_window_bounds])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

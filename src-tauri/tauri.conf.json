@@ -15,15 +15,17 @@
     "windows": [
       {
         "title": "Vocistant",
-        "width": 92,
-        "height": 92,
+        "width": 104,
+        "height": 104,
         "resizable": false,
         "fullscreen": false,
         "transparent": true,
         "decorations": false,
         "alwaysOnTop": true,
         "visible": true,
-        "dragDropEnabled": false
+        "dragDropEnabled": false,
+        "x": 100,
+        "y": 100
       }
     ],
     "security": {

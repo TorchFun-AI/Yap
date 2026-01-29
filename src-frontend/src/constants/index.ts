@@ -11,10 +11,29 @@ export const RECORDING_DEFAULT_LANGUAGE = 'auto'
 
 // 窗口配置
 export const WINDOW_PANEL_WIDTH = 320
-export const WINDOW_PANEL_HEIGHT = 220
-export const WINDOW_BALL_SIZE = 60
+export const WINDOW_PANEL_HEIGHT = 280
+export const WINDOW_BALL_SIZE = 56
 export const WINDOW_GAP = 8
-export const WINDOW_SHADOW = 16
+export const WINDOW_SHADOW = 24
+
+// 设计系统颜色
+export const DesignColors = {
+  // 主色调
+  SURFACE: '#121212',        // OLED 黑
+  SURFACE_ALT: '#1C1C1E',    // 深灰
+  PANEL_BG: 'rgba(44, 44, 46, 0.8)',
+  BALL_BG: 'rgba(31, 31, 31, 0.9)',  // #1F1F1F 90%
+  BALL_BORDER: 'rgba(255, 255, 255, 0.1)', // 亮色描边
+
+  // 提亮色
+  ACCENT: '#2979FF',         // Electric Blue
+  ACCENT_ALT: '#B388FF',     // Neon Purple
+
+  // 文字颜色
+  TEXT_PRIMARY: '#FFFFFF',
+  TEXT_SECONDARY: 'rgba(255, 255, 255, 0.7)',
+  TEXT_TERTIARY: 'rgba(255, 255, 255, 0.5)',
+} as const
 
 // 默认窗口位置
 export const DEFAULT_WINDOW_POSITION = { x: 100, y: 100 }
@@ -78,7 +97,19 @@ export const StatusColorMap: Record<string, string> = {
   [AppStatus.IDLE]: 'default',
 }
 
-// 悬浮球颜色映射 (HEX 颜色值)
+// 悬浮球图标颜色映射 (用于图标颜色而非背景色)
+export const BallIconColorMap: Record<string, string> = {
+  [AppStatus.STARTING]: '#2979FF',    // Electric Blue
+  [AppStatus.SPEAKING]: '#fa8c16',    // orange
+  [AppStatus.TRANSCRIBING]: '#2979FF', // Electric Blue
+  [AppStatus.CORRECTING]: '#B388FF',   // Neon Purple
+  [AppStatus.TRANSLATING]: '#13c2c2',  // cyan
+  [AppStatus.LISTENING]: '#52c41a',    // green
+  [AppStatus.ERROR]: '#ff4d4f',        // red
+  [AppStatus.IDLE]: '#FFFFFF',         // white
+}
+
+// 悬浮球颜色映射 (HEX 颜色值) - 保留用于兼容
 export const BallColorMap: Record<string, string> = {
   [AppStatus.STARTING]: '#1890ff',    // blue (processing)
   [AppStatus.SPEAKING]: '#fa8c16',    // orange
