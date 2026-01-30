@@ -157,6 +157,7 @@ const onActionHover = (actionId: string | null) => {
 // 暴露展开状态给父组件
 defineExpose({
   isExpanded,
+  hasDropdown: computed(() => activeDropdown.value !== null),
 })
 
 // 图标 SVG 路径

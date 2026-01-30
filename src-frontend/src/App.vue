@@ -30,12 +30,20 @@ const ballOnlyBounds = {
   bottom: WINDOW_BALL_SIZE + WINDOW_SHADOW,
 }
 
-// 展开时的边界（包含操作面板和下拉菜单）
+// 展开时的边界（操作面板在悬浮球右侧水平展开）
 const expandedBounds = {
   left: WINDOW_SHADOW,
   top: WINDOW_SHADOW,
-  right: WINDOW_PANEL_WIDTH + WINDOW_SHADOW,
-  bottom: WINDOW_BALL_SIZE + WINDOW_SHADOW + 120,
+  right: WINDOW_BALL_SIZE + 160 + WINDOW_SHADOW,
+  bottom: WINDOW_BALL_SIZE + WINDOW_SHADOW,
+}
+
+// 展开且有下拉菜单时的边界
+const expandedWithDropdownBounds = {
+  left: WINDOW_SHADOW,
+  top: WINDOW_SHADOW,
+  right: WINDOW_BALL_SIZE + 160 + WINDOW_SHADOW,
+  bottom: WINDOW_BALL_SIZE + WINDOW_SHADOW + 110,
 }
 
 let pollTimer: number | null = null
@@ -101,9 +109,16 @@ const pollMousePosition = async () => {
     const relX = cursorX - windowX
     const relY = cursorY - windowY
 
-    // 根据展开状态选择检测区域
+    // 根据展开状态和下拉菜单状态选择检测区域
     const isExpanded = floatingBallRef.value?.isExpanded ?? false
-    const bounds = isExpanded ? expandedBounds : ballOnlyBounds
+    const hasDropdown = floatingBallRef.value?.hasDropdown ?? false
+
+    let bounds = ballOnlyBounds
+    if (isExpanded && hasDropdown) {
+      bounds = expandedWithDropdownBounds
+    } else if (isExpanded) {
+      bounds = expandedBounds
+    }
 
     // 检测是否在区域内（增加一些边距使点击更容易）
     const padding = 5
