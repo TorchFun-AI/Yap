@@ -14,7 +14,7 @@ export const WINDOW_PANEL_WIDTH = 320
 export const WINDOW_PANEL_HEIGHT = 280
 export const WINDOW_BALL_SIZE = 56
 export const WINDOW_GAP = 8
-export const WINDOW_SHADOW = 24
+export const WINDOW_SHADOW = 32
 
 // 设计系统颜色
 export const DesignColors = {
