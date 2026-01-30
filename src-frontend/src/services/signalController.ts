@@ -115,6 +115,19 @@ export class SignalController {
     }))
   }
 
+  updateConfig(config: {
+    language?: string
+    correctionEnabled?: boolean
+    targetLanguage?: string
+  }): void {
+    if (this.ws?.readyState !== WebSocket.OPEN) return
+    this.ws.send(JSON.stringify({
+      type: WsMessageType.CONTROL,
+      action: 'update_config',
+      config,
+    }))
+  }
+
   disconnect(): void {
     this.manualDisconnect = true
     if (this.retryTimer) {

@@ -1,9 +1,10 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import type { ConnectionStatus } from '@/services/signalController'
+import { signalController } from '@/services/signalController'
 import { RECORDING_DEFAULT_LANGUAGE } from '@/constants'
 
-export type AppStatus = 'idle' | 'listening' | 'transcribing' | 'correcting' | 'speaking' | 'error'
+export type AppStatus = 'idle' | 'starting' | 'listening' | 'transcribing' | 'correcting' | 'translating' | 'speaking' | 'error'
 
 export const useAppState = defineStore('appState', () => {
   const status = ref<AppStatus>('idle')
@@ -47,14 +48,28 @@ export const useAppState = defineStore('appState', () => {
 
   function setAsrLanguage(lang: string) {
     asrLanguage.value = lang
+    syncConfigToBackend()
   }
 
   function setTargetLanguage(lang: string) {
     targetLanguage.value = lang
+    syncConfigToBackend()
   }
 
   function setCorrectionEnabled(enabled: boolean) {
     correctionEnabled.value = enabled
+    syncConfigToBackend()
+  }
+
+  // 同步配置到后端（已连接时发送）
+  function syncConfigToBackend() {
+    if (isConnected.value) {
+      signalController.updateConfig({
+        language: asrLanguage.value,
+        correctionEnabled: correctionEnabled.value,
+        targetLanguage: targetLanguage.value || undefined,
+      })
+    }
   }
 
   function reset() {
