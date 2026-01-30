@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
-import { getCurrentWindow, LogicalSize, LogicalPosition, availableMonitors } from '@tauri-apps/api/window'
+import { ref, onMounted, onUnmounted } from 'vue'
+import { getCurrentWindow, availableMonitors } from '@tauri-apps/api/window'
 import { invoke } from '@tauri-apps/api/core'
 import FloatingBall from './components/FloatingBall.vue'
 import StatusPanel from './components/StatusPanel.vue'
@@ -15,6 +15,17 @@ import {
 
 const showPanel = ref(false)
 const isAnimating = ref(false)
+
+// 球区域的边界（相对于窗口）
+const ballBounds = {
+  left: WINDOW_PANEL_WIDTH - WINDOW_BALL_SIZE + WINDOW_SHADOW,
+  top: WINDOW_PANEL_HEIGHT + WINDOW_GAP + WINDOW_SHADOW,
+  right: WINDOW_PANEL_WIDTH + WINDOW_SHADOW,
+  bottom: WINDOW_PANEL_HEIGHT + WINDOW_GAP + WINDOW_BALL_SIZE + WINDOW_SHADOW,
+}
+
+let pollTimer: number | null = null
+let lastIgnoreState = true
 
 // 保存窗口位置到 Tauri store
 const saveWindowPosition = async (x: number, y: number) => {
@@ -56,69 +67,115 @@ const clampToScreen = async (x: number, y: number, width: number, height: number
   return { x, y }
 }
 
-// 初始化窗口
-onMounted(async () => {
-  const appWindow = getCurrentWindow()
-  const savedPosition = await loadWindowPosition()
-  const ballWindowSize = WINDOW_BALL_SIZE + WINDOW_SHADOW * 2
+// 轮询检测鼠标位置
+const pollMousePosition = async () => {
+  if (showPanel.value) return
 
-  const { x, y } = await clampToScreen(savedPosition.x, savedPosition.y, ballWindowSize, ballWindowSize)
-  await appWindow.setSize(new LogicalSize(ballWindowSize, ballWindowSize))
-  await appWindow.setPosition(new LogicalPosition(x, y))
+  try {
+    const appWindow = getCurrentWindow()
+    const pos = await appWindow.outerPosition()
+    const scale = await appWindow.scaleFactor()
+    const windowX = pos.x / scale
+    const windowY = pos.y / scale
+
+    // 使用 Rust 命令获取全局鼠标位置
+    const cursorPos = await invoke<{ x: number; y: number }>('get_cursor_position')
+    const cursorX = cursorPos.x
+    const cursorY = cursorPos.y
+
+    // 计算鼠标相对于窗口的位置
+    const relX = cursorX - windowX
+    const relY = cursorY - windowY
+
+    // 检测是否在球区域内（增加一些边距使点击更容易）
+    const padding = 5
+    const isInBall = relX >= ballBounds.left - padding &&
+                     relX <= ballBounds.right + padding &&
+                     relY >= ballBounds.top - padding &&
+                     relY <= ballBounds.bottom + padding
+
+    // 只在状态变化时调用 API
+    if (isInBall && lastIgnoreState) {
+      await invoke('set_ignore_cursor_events', { ignore: false })
+      lastIgnoreState = false
+    } else if (!isInBall && !lastIgnoreState) {
+      await invoke('set_ignore_cursor_events', { ignore: true })
+      lastIgnoreState = true
+    }
+  } catch (e) {
+    // 忽略错误，继续轮询
+  }
+}
+
+const startPolling = () => {
+  if (pollTimer) return
+  pollTimer = window.setInterval(pollMousePosition, 50)
+}
+
+const stopPolling = () => {
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
+}
+
+// 初始化窗口 - 固定大小
+onMounted(async () => {
+  const savedPosition = await loadWindowPosition()
+
+  // 固定窗口大小为展开状态
+  const totalHeight = WINDOW_PANEL_HEIGHT + WINDOW_GAP + WINDOW_BALL_SIZE + WINDOW_SHADOW * 2
+  const totalWidth = WINDOW_PANEL_WIDTH + WINDOW_SHADOW * 2
+
+  const { x, y } = await clampToScreen(savedPosition.x, savedPosition.y, totalWidth, totalHeight)
+  await invoke('set_window_bounds', { x, y, width: totalWidth, height: totalHeight })
+
+  // 初始状态启用鼠标穿透
+  await invoke('set_ignore_cursor_events', { ignore: true })
+  lastIgnoreState = true
+
+  // 启动轮询
+  startPolling()
+})
+
+onUnmounted(() => {
+  stopPolling()
 })
 
 const togglePanel = async () => {
   if (isAnimating.value) return
   isAnimating.value = true
 
-  const appWindow = getCurrentWindow()
-  const pos = await appWindow.outerPosition()
-  const scale = await appWindow.scaleFactor()
-  const currentX = pos.x / scale
-  const currentY = pos.y / scale
-
   if (!showPanel.value) {
     // 展开面板
-    const totalHeight = WINDOW_PANEL_HEIGHT + WINDOW_GAP + WINDOW_BALL_SIZE + WINDOW_SHADOW * 2
-    const totalWidth = WINDOW_PANEL_WIDTH + WINDOW_SHADOW * 2
-
-    // 计算新位置：球保持在右下角
-    const newX = currentX - (WINDOW_PANEL_WIDTH - WINDOW_BALL_SIZE)
-    const newY = currentY - (WINDOW_PANEL_HEIGHT + WINDOW_GAP)
-
-    const { x, y } = await clampToScreen(newX, newY, totalWidth, totalHeight)
-
-    // 先调整窗口大小和位置
-    await appWindow.setSize(new LogicalSize(totalWidth, totalHeight))
-    await appWindow.setPosition(new LogicalPosition(x, y))
-
-    // 然后显示面板（触发动画）
-    await nextTick()
+    stopPolling()
+    await invoke('set_ignore_cursor_events', { ignore: false })
+    lastIgnoreState = false
     showPanel.value = true
 
     // 保存位置
-    await saveWindowPosition(x, y)
+    const appWindow = getCurrentWindow()
+    const pos = await appWindow.outerPosition()
+    const scale = await appWindow.scaleFactor()
+    await saveWindowPosition(pos.x / scale, pos.y / scale)
 
     setTimeout(() => {
       isAnimating.value = false
     }, 350)
   } else {
-    // 收起面板 - 先播放动画
+    // 收起面板
     showPanel.value = false
 
-    // 等待动画完成后再缩小窗口
     setTimeout(async () => {
-      const ballWindowSize = WINDOW_BALL_SIZE + WINDOW_SHADOW * 2
-
-      // 计算球的新位置
-      const newX = currentX + (WINDOW_PANEL_WIDTH - WINDOW_BALL_SIZE)
-      const newY = currentY + WINDOW_PANEL_HEIGHT + WINDOW_GAP
-
-      await appWindow.setSize(new LogicalSize(ballWindowSize, ballWindowSize))
-      await appWindow.setPosition(new LogicalPosition(newX, newY))
+      await invoke('set_ignore_cursor_events', { ignore: true })
+      lastIgnoreState = true
+      startPolling()
 
       // 保存位置
-      await saveWindowPosition(newX, newY)
+      const appWindow = getCurrentWindow()
+      const pos = await appWindow.outerPosition()
+      const scale = await appWindow.scaleFactor()
+      await saveWindowPosition(pos.x / scale, pos.y / scale)
 
       isAnimating.value = false
     }, 300)

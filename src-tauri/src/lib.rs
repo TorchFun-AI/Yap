@@ -7,6 +7,13 @@ use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut,
 use tauri_plugin_store::StoreExt;
 use serde::{Deserialize, Serialize};
 
+#[cfg(target_os = "macos")]
+use objc::msg_send;
+#[cfg(target_os = "macos")]
+use objc::sel;
+#[cfg(target_os = "macos")]
+use objc::sel_impl;
+
 const STORE_PATH: &str = "settings.json";
 const WINDOW_POSITION_KEY: &str = "window_position";
 const DEFAULT_X: f64 = 100.0;
@@ -49,12 +56,68 @@ fn load_window_position(app: tauri::AppHandle) -> WindowPosition {
 /// 原子操作：同时设置窗口大小和位置，减少闪烁
 #[tauri::command]
 fn set_window_bounds(window: tauri::Window, x: f64, y: f64, width: f64, height: f64) -> Result<(), String> {
-    use tauri::{LogicalPosition, LogicalSize};
+    #[cfg(target_os = "macos")]
+    {
+        use cocoa::foundation::{NSPoint, NSRect, NSSize};
+        use tauri::Manager;
 
-    // 在 Rust 层面连续调用，减少 IPC 开销
-    window.set_size(LogicalSize::new(width, height)).map_err(|e| e.to_string())?;
-    window.set_position(LogicalPosition::new(x, y)).map_err(|e| e.to_string())?;
-    Ok(())
+        let ns_window = window.ns_window().map_err(|e| e.to_string())?;
+        let ns_window = ns_window as cocoa::base::id;
+
+        unsafe {
+            // 获取屏幕高度用于坐标转换（macOS 坐标系原点在左下角）
+            let screen: cocoa::base::id = msg_send![ns_window, screen];
+            let screen_frame: NSRect = msg_send![screen, frame];
+            let screen_height = screen_frame.size.height;
+
+            // 转换坐标：Tauri 使用左上角原点，macOS 使用左下角原点
+            let flipped_y = screen_height - y - height;
+
+            let frame = NSRect::new(
+                NSPoint::new(x, flipped_y),
+                NSSize::new(width, height)
+            );
+
+            // setFrame:display:animate: 一次性设置位置和大小
+            // display:false 避免立即重绘，animate:false 禁用动画
+            let _: () = msg_send![ns_window, setFrame:frame display:false animate:false];
+        }
+        Ok(())
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        use tauri::{LogicalPosition, LogicalSize};
+        window.set_size(LogicalSize::new(width, height)).map_err(|e| e.to_string())?;
+        window.set_position(LogicalPosition::new(x, y)).map_err(|e| e.to_string())?;
+        Ok(())
+    }
+}
+
+/// 设置窗口是否忽略鼠标事件（点击穿透）
+#[tauri::command]
+fn set_ignore_cursor_events(window: tauri::Window, ignore: bool) -> Result<(), String> {
+    window.set_ignore_cursor_events(ignore).map_err(|e| e.to_string())
+}
+
+/// 获取全局鼠标位置
+#[tauri::command]
+fn get_cursor_position() -> Result<WindowPosition, String> {
+    #[cfg(target_os = "macos")]
+    {
+        use core_graphics::event::{CGEvent, CGEventType};
+        use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
+
+        let source = CGEventSource::new(CGEventSourceStateID::HIDSystemState)
+            .map_err(|_| "Failed to create event source")?;
+        let event = CGEvent::new(source)
+            .map_err(|_| "Failed to create event")?;
+        let point = event.location();
+        Ok(WindowPosition { x: point.x, y: point.y })
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        Err("Not supported on this platform".to_string())
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -117,7 +180,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![greet, save_window_position, load_window_position, set_window_bounds])
+        .invoke_handler(tauri::generate_handler![greet, save_window_position, load_window_position, set_window_bounds, set_ignore_cursor_events, get_cursor_position])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

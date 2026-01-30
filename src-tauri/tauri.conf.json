@@ -15,8 +15,8 @@
     "windows": [
       {
         "title": "Vocistant",
-        "width": 104,
-        "height": 104,
+        "width": 368,
+        "height": 408,
         "resizable": false,
         "fullscreen": false,
         "transparent": true,
