@@ -3,7 +3,11 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { getCurrentWindow, availableMonitors } from '@tauri-apps/api/window'
 import { invoke } from '@tauri-apps/api/core'
 import FloatingBall from './components/FloatingBall.vue'
+import FloatingBallV2 from './components/FloatingBallV2.vue'
 import StatusPanel from './components/StatusPanel.vue'
+import { useAppState } from '@/stores/appState'
+import { signalController } from '@/services/signalController'
+import { AppStatus } from '@/constants'
 import {
   WINDOW_PANEL_WIDTH,
   WINDOW_PANEL_HEIGHT,
@@ -13,15 +17,25 @@ import {
   DEFAULT_WINDOW_POSITION,
 } from '@/constants'
 
+const appState = useAppState()
 const showPanel = ref(false)
 const isAnimating = ref(false)
+const floatingBallRef = ref<InstanceType<typeof FloatingBallV2> | null>(null)
 
-// 球区域的边界（相对于窗口）
-const ballBounds = {
-  left: WINDOW_PANEL_WIDTH - WINDOW_BALL_SIZE + WINDOW_SHADOW,
-  top: WINDOW_PANEL_HEIGHT + WINDOW_GAP + WINDOW_SHADOW,
+// 球区域的边界（相对于窗口，悬浮球在左上角）
+const ballOnlyBounds = {
+  left: WINDOW_SHADOW,
+  top: WINDOW_SHADOW,
+  right: WINDOW_BALL_SIZE + WINDOW_SHADOW,
+  bottom: WINDOW_BALL_SIZE + WINDOW_SHADOW,
+}
+
+// 展开时的边界（包含操作面板和下拉菜单）
+const expandedBounds = {
+  left: WINDOW_SHADOW,
+  top: WINDOW_SHADOW,
   right: WINDOW_PANEL_WIDTH + WINDOW_SHADOW,
-  bottom: WINDOW_PANEL_HEIGHT + WINDOW_GAP + WINDOW_BALL_SIZE + WINDOW_SHADOW,
+  bottom: WINDOW_BALL_SIZE + WINDOW_SHADOW + 120,
 }
 
 let pollTimer: number | null = null
@@ -87,18 +101,22 @@ const pollMousePosition = async () => {
     const relX = cursorX - windowX
     const relY = cursorY - windowY
 
-    // 检测是否在球区域内（增加一些边距使点击更容易）
+    // 根据展开状态选择检测区域
+    const isExpanded = floatingBallRef.value?.isExpanded ?? false
+    const bounds = isExpanded ? expandedBounds : ballOnlyBounds
+
+    // 检测是否在区域内（增加一些边距使点击更容易）
     const padding = 5
-    const isInBall = relX >= ballBounds.left - padding &&
-                     relX <= ballBounds.right + padding &&
-                     relY >= ballBounds.top - padding &&
-                     relY <= ballBounds.bottom + padding
+    const isInBounds = relX >= bounds.left - padding &&
+                       relX <= bounds.right + padding &&
+                       relY >= bounds.top - padding &&
+                       relY <= bounds.bottom + padding
 
     // 只在状态变化时调用 API
-    if (isInBall && lastIgnoreState) {
+    if (isInBounds && lastIgnoreState) {
       await invoke('set_ignore_cursor_events', { ignore: false })
       lastIgnoreState = false
-    } else if (!isInBall && !lastIgnoreState) {
+    } else if (!isInBounds && !lastIgnoreState) {
       await invoke('set_ignore_cursor_events', { ignore: true })
       lastIgnoreState = true
     }
@@ -116,6 +134,28 @@ const stopPolling = () => {
   if (pollTimer) {
     clearInterval(pollTimer)
     pollTimer = null
+  }
+}
+
+// 录音控制
+const toggleRecording = () => {
+  if (appState.isActive) {
+    signalController.stopRecording()
+    appState.setStatus(AppStatus.IDLE)
+  } else if (appState.isConnected) {
+    signalController.startRecording({
+      language: appState.asrLanguage,
+      correctionEnabled: appState.correctionEnabled,
+      targetLanguage: appState.targetLanguage || undefined,
+    })
+    appState.setStatus(AppStatus.STARTING)
+  }
+}
+
+// 处理操作区事件
+const handleAction = (id: string, value?: string) => {
+  if (id === 'record') {
+    toggleRecording()
   }
 }
 
@@ -185,13 +225,13 @@ const togglePanel = async () => {
 
 <template>
   <div class="app-container">
+    <div class="ball-wrapper">
+      <FloatingBallV2 ref="floatingBallRef" @action="handleAction" />
+    </div>
     <div class="panel-area">
       <transition name="panel-slide">
         <StatusPanel v-show="showPanel" @close="togglePanel" />
       </transition>
-    </div>
-    <div class="ball-wrapper">
-      <FloatingBall @click="togglePanel" :show-pulse="!showPanel" />
     </div>
   </div>
 </template>
@@ -200,7 +240,7 @@ const togglePanel = async () => {
 .app-container {
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
+  justify-content: flex-start;
   width: 100%;
   height: 100vh;
   box-sizing: border-box;
@@ -208,18 +248,18 @@ const togglePanel = async () => {
   overflow: hidden;
 }
 
+.ball-wrapper {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
 .panel-area {
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
-}
-
-.ball-wrapper {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 8px;
-  flex-shrink: 0;
+  justify-content: flex-start;
 }
 
 /* Panel slide transition - 从下往上展开 */
