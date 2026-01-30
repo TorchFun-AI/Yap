@@ -6,7 +6,6 @@ import { useAppState } from '@/stores/appState'
 import { signalController } from '@/services/signalController'
 import {
   WS_DEFAULT_URL,
-  RECORDING_DEFAULT_LANGUAGE,
   ConnectionStatus,
   AppStatus,
   WsMessageType,
@@ -34,9 +33,6 @@ const isRecording = computed(() =>
   appState.status === AppStatus.SPEAKING
 )
 const bufferDuration = ref(0)
-const asrLanguage = ref(RECORDING_DEFAULT_LANGUAGE)
-const correctionEnabled = ref(true)
-const targetLanguage = ref('')
 let unlistenShortcut: UnlistenFn | null = null
 
 const statusText = computed(() => StatusTextMap[appState.status] || appState.status)
@@ -126,9 +122,9 @@ const toggleRecording = () => {
     appState.setStatus(AppStatus.IDLE)
   } else {
     signalController.startRecording({
-      language: asrLanguage.value,
-      correctionEnabled: correctionEnabled.value,
-      targetLanguage: targetLanguage.value || undefined,
+      language: appState.asrLanguage,
+      correctionEnabled: appState.correctionEnabled,
+      targetLanguage: appState.targetLanguage || undefined,
     })
     appState.setStatus(AppStatus.STARTING)
   }
@@ -170,7 +166,8 @@ const toggleRecording = () => {
           </svg>
           <span class="config-label">Language</span>
           <a-select
-            v-model:value="asrLanguage"
+            :value="appState.asrLanguage"
+            @update:value="appState.setAsrLanguage"
             :disabled="isRecording"
             :options="ASR_LANGUAGES"
             size="small"
@@ -186,7 +183,8 @@ const toggleRecording = () => {
           </svg>
           <span class="config-label">Correction</span>
           <a-switch
-            v-model:checked="correctionEnabled"
+            :checked="appState.correctionEnabled"
+            @update:checked="appState.setCorrectionEnabled"
             :disabled="isRecording"
             size="small"
           />
@@ -203,7 +201,8 @@ const toggleRecording = () => {
           </svg>
           <span class="config-label">Translate</span>
           <a-select
-            v-model:value="targetLanguage"
+            :value="appState.targetLanguage"
+            @update:value="appState.setTargetLanguage"
             :disabled="isRecording"
             :options="TRANSLATE_LANGUAGES"
             size="small"
