@@ -68,6 +68,19 @@ class RecordingSession:
         self._pipeline.reset()
         self._on_result({"type": "status", "status": "stopped"})
 
+    def update_config(self, config: dict) -> None:
+        """Update runtime configuration during recording."""
+        if not self._is_running:
+            return
+        asr_language = config.get("language")
+        correction_enabled = config.get("correctionEnabled")
+        target_language = config.get("targetLanguage")
+        self._pipeline.set_config(
+            correction_enabled=correction_enabled,
+            target_language=target_language,
+            asr_language=asr_language
+        )
+
     @property
     def is_running(self) -> bool:
         return self._is_running

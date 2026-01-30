@@ -95,6 +95,10 @@ async def audio_websocket(websocket: WebSocket):
                     if session and session.is_running:
                         session.stop()
                         session = None
+                elif action == "update_config":
+                    if session and session.is_running:
+                        config = data.get("config", {})
+                        session.update_config(config)
     except WebSocketDisconnect:
         print("Client disconnected")
         if session and session.is_running:
