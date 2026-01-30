@@ -1,3 +1,6 @@
+// 允许使用 cocoa crate 的 deprecated API（迁移到 objc2 需要较大改动）
+#![allow(deprecated)]
+
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -59,7 +62,6 @@ fn set_window_bounds(window: tauri::Window, x: f64, y: f64, width: f64, height: 
     #[cfg(target_os = "macos")]
     {
         use cocoa::foundation::{NSPoint, NSRect, NSSize};
-        use tauri::Manager;
 
         let ns_window = window.ns_window().map_err(|e| e.to_string())?;
         let ns_window = ns_window as cocoa::base::id;
@@ -104,7 +106,7 @@ fn set_ignore_cursor_events(window: tauri::Window, ignore: bool) -> Result<(), S
 fn get_cursor_position() -> Result<WindowPosition, String> {
     #[cfg(target_os = "macos")]
     {
-        use core_graphics::event::{CGEvent, CGEventType};
+        use core_graphics::event::CGEvent;
         use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
 
         let source = CGEventSource::new(CGEventSourceStateID::HIDSystemState)
