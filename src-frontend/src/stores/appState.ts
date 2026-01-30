@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { ConnectionStatus } from '@/services/signalController'
+import { RECORDING_DEFAULT_LANGUAGE } from '@/constants'
 
 export type AppStatus = 'idle' | 'listening' | 'transcribing' | 'correcting' | 'speaking' | 'error'
 
@@ -12,10 +13,15 @@ export const useAppState = defineStore('appState', () => {
   const originalTranscript = ref('')
   const errorMessage = ref('')
 
+  // 录音配置
+  const asrLanguage = ref(RECORDING_DEFAULT_LANGUAGE)
+  const targetLanguage = ref('')
+  const correctionEnabled = ref(true)
+
   const isConnected = computed(() => connectionStatus.value === 'connected')
 
   const isActive = computed(() =>
-    status.value === 'listening' || status.value === 'transcribing' || status.value === 'correcting'
+    status.value !== 'idle' && status.value !== 'error'
   )
 
   function setStatus(newStatus: AppStatus) {
@@ -39,6 +45,18 @@ export const useAppState = defineStore('appState', () => {
     status.value = 'error'
   }
 
+  function setAsrLanguage(lang: string) {
+    asrLanguage.value = lang
+  }
+
+  function setTargetLanguage(lang: string) {
+    targetLanguage.value = lang
+  }
+
+  function setCorrectionEnabled(enabled: boolean) {
+    correctionEnabled.value = enabled
+  }
+
   function reset() {
     status.value = 'idle'
     currentTranscript.value = ''
@@ -55,10 +73,16 @@ export const useAppState = defineStore('appState', () => {
     originalTranscript,
     errorMessage,
     isActive,
+    asrLanguage,
+    targetLanguage,
+    correctionEnabled,
     setStatus,
     setConnectionStatus,
     setTranscript,
     setError,
+    setAsrLanguage,
+    setTargetLanguage,
+    setCorrectionEnabled,
     reset,
   }
 })
