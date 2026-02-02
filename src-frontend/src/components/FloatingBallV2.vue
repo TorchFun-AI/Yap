@@ -33,6 +33,7 @@ const hoveredAction = ref<string | null>(null)
 
 const iconColor = computed(() => BallIconColorMap[appState.status] || BallIconColorMap[AppStatus.IDLE])
 const isActive = computed(() => appState.isActive)
+const isStarting = computed(() => appState.status === AppStatus.STARTING)
 const waveformLevels = computed(() => appState.waveformLevels)
 
 // 录音按钮是否禁用（仅在初始化中或未连接时禁用，说话/转写等状态可以停止）
@@ -203,8 +204,30 @@ const iconPaths: Record<string, string> = {
       @mousedown="onBallMouseDown"
       @mousemove="onBallMouseMove"
     >
-      <!-- Active: 声波可视化 -->
-      <div v-if="isActive" class="waveform-container" :style="{ color: iconColor }">
+      <!-- Starting: 旋转加载图标 -->
+      <svg
+        v-if="isStarting"
+        class="ball-icon loading-spinner"
+        :style="{ color: iconColor }"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M12 2v4" />
+        <path d="M12 18v4" />
+        <path d="M4.93 4.93l2.83 2.83" />
+        <path d="M16.24 16.24l2.83 2.83" />
+        <path d="M2 12h4" />
+        <path d="M18 12h4" />
+        <path d="M4.93 19.07l2.83-2.83" />
+        <path d="M16.24 7.76l2.83-2.83" />
+      </svg>
+
+      <!-- Active (非 Starting): 声波可视化 -->
+      <div v-else-if="isActive" class="waveform-container" :style="{ color: iconColor }">
         <div
           v-for="(level, index) in waveformLevels"
           :key="index"
@@ -327,6 +350,20 @@ const iconPaths: Record<string, string> = {
   width: 24px;
   height: 24px;
   transition: color 0.3s ease;
+}
+
+/* 加载旋转动画 */
+.ball-icon.loading-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* 声波可视化 */
