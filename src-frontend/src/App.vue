@@ -23,8 +23,6 @@ import { setLocale } from '@/i18n'
 const appState = useAppState()
 const floatingBallRef = ref<InstanceType<typeof FloatingBallV2> | null>(null)
 let unlistenSettingsChanged: UnlistenFn | null = null
-let unlistenFocus: UnlistenFn | null = null
-let unlistenBlur: UnlistenFn | null = null
 
 // 球区域的边界（相对于窗口，悬浮球在左上角）
 const ballOnlyBounds = {
@@ -147,6 +145,8 @@ const pollMousePosition = async () => {
       lastIgnoreState = false
       // 进入窗口范围时自动获取焦点
       await appWindow.setFocus()
+      // 窗口可接收事件，停止轮询
+      stopPolling()
     } else if (!isInBounds && !lastIgnoreState) {
       await invoke('set_ignore_cursor_events', { ignore: true })
       lastIgnoreState = true
@@ -228,11 +228,44 @@ onMounted(async () => {
   await invoke('set_ignore_cursor_events', { ignore: true })
   lastIgnoreState = true
 
-  // 监听窗口焦点变化，只有无焦点时才轮询鼠标位置
-  unlistenFocus = await listen('tauri://focus', () => {
-    stopPolling()
+  // 监听鼠标移动，检测是否离开可见区域
+  document.addEventListener('mousemove', (e) => {
+    if (lastIgnoreState) return
+
+    // 获取当前边界
+    const isExpanded = floatingBallRef.value?.isExpanded ?? false
+    const hasDropdown = floatingBallRef.value?.hasDropdown ?? false
+    const hasMessages = floatingBallRef.value?.hasMessages ?? false
+
+    let bounds = ballOnlyBounds
+    if (isExpanded && hasDropdown) {
+      bounds = expandedWithDropdownBounds
+    } else if (isExpanded && hasMessages) {
+      bounds = expandedWithMessagesBounds
+    } else if (isExpanded) {
+      bounds = expandedBounds
+    }
+
+    // 检测鼠标是否在可见区域内
+    const padding = 5
+    const isInBounds = e.clientX >= bounds.left - padding &&
+                       e.clientX <= bounds.right + padding &&
+                       e.clientY >= bounds.top - padding &&
+                       e.clientY <= bounds.bottom + padding
+
+    if (!isInBounds) {
+      invoke('set_ignore_cursor_events', { ignore: true })
+      lastIgnoreState = true
+      startPolling()
+    }
   })
-  unlistenBlur = await listen('tauri://blur', () => {
+
+  // 监听窗口失去焦点，重新启动轮询（备份机制）
+  window.addEventListener('blur', () => {
+    if (!lastIgnoreState) {
+      invoke('set_ignore_cursor_events', { ignore: true })
+      lastIgnoreState = true
+    }
     startPolling()
   })
 
@@ -295,12 +328,6 @@ onMounted(async () => {
 onUnmounted(() => {
   if (unlistenSettingsChanged) {
     unlistenSettingsChanged()
-  }
-  if (unlistenFocus) {
-    unlistenFocus()
-  }
-  if (unlistenBlur) {
-    unlistenBlur()
   }
   stopPolling()
   signalController.disconnect()

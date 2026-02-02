@@ -37,6 +37,7 @@ const isTranscribing = computed(() => appState.status === AppStatus.TRANSCRIBING
 const isCorrecting = computed(() => appState.status === AppStatus.CORRECTING)
 const isTranslating = computed(() => appState.status === AppStatus.TRANSLATING)
 const waveformLevels = computed(() => appState.waveformLevels)
+const recentMessages = computed(() => appState.messageHistory)
 
 // 是否显示声波（仅在 listening/speaking 状态）
 const showWaveform = computed(() =>
