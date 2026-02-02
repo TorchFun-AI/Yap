@@ -8,11 +8,13 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 import uvicorn
 
 from core.recording_session import RecordingSession
 from core.audio_capture import AudioCapture
 from core.waveform_analyzer import register_waveform_callback, unregister_waveform_callback
+from core.model_manager import ModelManager
 
 # Configure logging
 logging.basicConfig(
@@ -58,6 +60,50 @@ async def list_devices():
     return {"devices": AudioCapture.list_devices()}
 
 
+# Model Manager instance
+model_manager = ModelManager()
+
+
+class DownloadRequest(BaseModel):
+    model_id: str
+
+
+@app.get("/api/models/local")
+async def list_local_models():
+    """列出本地已下载的模型"""
+    return {"models": model_manager.list_local_models()}
+
+
+@app.get("/api/models/available")
+async def list_available_models():
+    """列出可下载的 MLX 格式模型"""
+    return {"models": model_manager.list_available_models()}
+
+
+@app.post("/api/models/download")
+async def download_model(request: DownloadRequest):
+    """下载模型（同步执行，适合小模型）"""
+    import threading
+
+    def do_download():
+        model_manager.download_model(request.model_id)
+
+    # 在后台线程中执行下载
+    thread = threading.Thread(target=do_download)
+    thread.start()
+
+    return {"status": "started", "model_id": request.model_id}
+
+
+@app.get("/api/models/progress/{model_id:path}")
+async def get_download_progress(model_id: str):
+    """获取下载进度"""
+    progress = model_manager.get_download_progress(model_id)
+    if progress:
+        return progress
+    return {"status": "not_found"}
+
+
 @app.websocket("/ws/audio")
 async def audio_websocket(websocket: WebSocket):
     """WebSocket endpoint for audio control via JSON messages."""
@@ -100,6 +146,10 @@ async def audio_websocket(websocket: WebSocket):
                     if session and session.is_running:
                         config = data.get("config", {})
                         session.update_config(config)
+                elif action == "update_llm_config":
+                    if session:
+                        llm_config = data.get("config", {})
+                        session.update_llm_config(llm_config)
     except WebSocketDisconnect:
         print("Client disconnected")
         if session and session.is_running:
