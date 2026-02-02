@@ -167,6 +167,7 @@ export const useAppState = defineStore('appState', () => {
   function setAsrModelPath(path: string) {
     asrModelPath.value = path
     localStorage.setItem(STORAGE_KEYS.asrModelPath, path)
+    syncConfigToBackend()
   }
 
   // 同步 LLM 配置到后端
@@ -189,6 +190,7 @@ export const useAppState = defineStore('appState', () => {
         language: asrLanguage.value,
         correctionEnabled: correctionEnabled.value,
         targetLanguage: targetLanguage.value || undefined,
+        asrModelPath: asrModelPath.value || undefined,
       })
     }
   }

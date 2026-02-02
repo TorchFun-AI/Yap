@@ -98,6 +98,7 @@ export class SignalController {
     language?: string
     correctionEnabled?: boolean
     targetLanguage?: string
+    asrModelPath?: string
   } = {}): void {
     if (this.ws?.readyState !== WebSocket.OPEN) return
     this.ws.send(JSON.stringify({
@@ -119,6 +120,7 @@ export class SignalController {
     language?: string
     correctionEnabled?: boolean
     targetLanguage?: string
+    asrModelPath?: string
   }): void {
     if (this.ws?.readyState !== WebSocket.OPEN) return
     this.ws.send(JSON.stringify({

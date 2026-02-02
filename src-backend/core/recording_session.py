@@ -41,10 +41,12 @@ class RecordingSession:
             asr_language = config.get("language", "auto")
             correction_enabled = config.get("correctionEnabled", True)
             target_language = config.get("targetLanguage", None)
+            asr_model_path = config.get("asrModelPath", None)
             self._pipeline.set_config(
                 correction_enabled=correction_enabled,
                 target_language=target_language,
-                asr_language=asr_language
+                asr_language=asr_language,
+                asr_model_path=asr_model_path
             )
 
         self._audio_capture.start(callback=self._on_audio_chunk)
@@ -81,10 +83,12 @@ class RecordingSession:
         asr_language = config.get("language")
         correction_enabled = config.get("correctionEnabled")
         target_language = config.get("targetLanguage")
+        asr_model_path = config.get("asrModelPath")
         self._pipeline.set_config(
             correction_enabled=correction_enabled,
             target_language=target_language,
-            asr_language=asr_language
+            asr_language=asr_language,
+            asr_model_path=asr_model_path
         )
 
     def update_llm_config(self, config: dict) -> None:

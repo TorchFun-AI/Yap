@@ -38,12 +38,14 @@ class AudioPipeline:
         self._target_language = None
         self._asr_language = None
 
-    def set_config(self, correction_enabled: bool = True, target_language: str = None, asr_language: str = None):
+    def set_config(self, correction_enabled: bool = True, target_language: str = None, asr_language: str = None, asr_model_path: str = None):
         """Set runtime configuration for correction and translation."""
         self._correction_enabled = correction_enabled
         self._target_language = target_language if target_language else None
         self._asr_language = asr_language if asr_language else None
-        logger.info(f"Pipeline config: asr_language={asr_language}, correction={correction_enabled}, target_language={target_language}")
+        if asr_model_path:
+            self.asr.set_model_path(asr_model_path)
+        logger.info(f"Pipeline config: asr_language={asr_language}, correction={correction_enabled}, target_language={target_language}, asr_model_path={asr_model_path}")
 
     def _emit_status(self, status: str, **kwargs):
         """Emit status update."""

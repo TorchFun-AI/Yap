@@ -179,6 +179,7 @@ const toggleRecording = () => {
       language: appState.asrLanguage,
       correctionEnabled: appState.correctionEnabled,
       targetLanguage: appState.targetLanguage || undefined,
+      asrModelPath: appState.asrModelPath || undefined,
     })
     appState.setStatus(AppStatus.STARTING)
   }
