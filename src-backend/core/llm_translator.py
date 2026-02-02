@@ -1,7 +1,7 @@
 """
 LLM Text Translator
 Uses LLM to translate text to target language.
-Supports OpenAI and Ollama (both via OpenAI-compatible API).
+Supports OpenAI-compatible API.
 """
 
 import os
@@ -28,21 +28,13 @@ class LLMTranslator:
         temperature: float = None,
     ):
         # Load from environment if not provided
-        self.provider = provider or os.getenv("LLM_PROVIDER", "ollama")
         self.api_key = api_key or os.getenv("LLM_API_KEY")
-        self.api_base = api_base or os.getenv("LLM_API_BASE")
+        self.api_base = api_base or os.getenv("LLM_API_BASE", "http://localhost:11434/v1")
         self.timeout = timeout or int(os.getenv("LLM_TIMEOUT", "10"))
         self.temperature = temperature or float(os.getenv("LLM_TEMPERATURE", "0.3"))
 
-        # Set default model based on provider
-        if model:
-            self.model = model
-        else:
-            default_models = {
-                "openai": "gpt-4o-mini",
-                "ollama": "gpt-4o-mini",
-            }
-            self.model = os.getenv("LLM_MODEL", default_models.get(self.provider, "gpt-4o-mini"))
+        # Set default model
+        self.model = model or os.getenv("LLM_MODEL", "gpt-4o-mini")
 
         self.client = None
         self.is_initialized = False
@@ -64,24 +56,14 @@ class LLMTranslator:
             return
 
         try:
-            if self.provider == "openai":
-                self.client = OpenAI(
-                    api_key=self.api_key,
-                    timeout=self.timeout,
-                )
-            elif self.provider == "ollama":
-                # Ollama uses OpenAI-compatible API
-                base_url = self.api_base or "http://localhost:11434/v1"
-                self.client = OpenAI(
-                    base_url=base_url,
-                    api_key="ollama",  # Ollama doesn't require API key
-                    timeout=self.timeout,
-                )
-            else:
-                raise ValueError(f"Unsupported provider: {self.provider}")
+            self.client = OpenAI(
+                api_key=self.api_key,
+                base_url=self.api_base,
+                timeout=self.timeout,
+            )
 
             self.is_initialized = True
-            logger.info(f"LLM translator initialized with provider: {self.provider}, model: {self.model}")
+            logger.info(f"LLM translator initialized with model: {self.model}")
 
         except Exception as e:
             logger.error(f"Failed to initialize LLM translator: {e}")
@@ -179,6 +161,22 @@ class LLMTranslator:
         return await loop.run_in_executor(
             self.executor, self.translate, text, target_language
         )
+
+    def reconfigure(self, **kwargs) -> None:
+        """动态重新配置 LLM 客户端"""
+        if 'api_key' in kwargs:
+            self.api_key = kwargs['api_key'] or None
+        if 'api_base' in kwargs:
+            self.api_base = kwargs['api_base'] or "http://localhost:11434/v1"
+        if 'model' in kwargs and kwargs['model']:
+            self.model = kwargs['model']
+        if 'timeout' in kwargs and kwargs['timeout']:
+            self.timeout = int(kwargs['timeout'])
+        if 'temperature' in kwargs and kwargs['temperature'] is not None:
+            self.temperature = float(kwargs['temperature'])
+
+        self.is_initialized = False
+        self.client = None
 
     def shutdown(self) -> None:
         """Shutdown the executor."""
