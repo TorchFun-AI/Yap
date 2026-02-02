@@ -48,7 +48,7 @@ function loadSettings() {
     targetLanguage: savedTargetLang || '',
     correctionEnabled: savedCorrection !== null ? savedCorrection === 'true' : true,
     // LLM 配置
-    llmApiKey: savedLlmApiKey || '',
+    llmApiKey: savedLlmApiKey || 'ollama',
     llmApiBase: savedLlmApiBase || 'http://localhost:11434/v1',
     llmModel: savedLlmModel || 'gpt-4o-mini',
     llmTimeout: savedLlmTimeout ? parseInt(savedLlmTimeout) : 10,
@@ -58,6 +58,14 @@ function loadSettings() {
   }
 }
 
+// 消息记录类型
+export interface MessageRecord {
+  id: number
+  text: string
+  original?: string
+  timestamp: number
+}
+
 export const useAppState = defineStore('appState', () => {
   const status = ref<AppStatus>('idle')
   const connectionStatus = ref<ConnectionStatus>('disconnected')
@@ -65,6 +73,10 @@ export const useAppState = defineStore('appState', () => {
   const currentTranscript = ref('')
   const originalTranscript = ref('')
   const errorMessage = ref('')
+
+  // 消息历史（最多保留 10 条）
+  const messageHistory = ref<MessageRecord[]>([])
+  let messageIdCounter = 0
 
   // 波形数据 (5 个归一化值 0-1)
   const waveformLevels = ref<number[]>([0, 0, 0, 0, 0])
@@ -104,6 +116,34 @@ export const useAppState = defineStore('appState', () => {
     currentTranscript.value = text
     if (original) {
       originalTranscript.value = original
+    }
+  }
+
+  // 添加最终结果到历史记录（只在收到 transcription 消息时调用）
+  function addToHistory(text: string, original?: string) {
+    if (text) {
+      messageHistory.value.unshift({
+        id: ++messageIdCounter,
+        text,
+        original,
+        timestamp: Date.now()
+      })
+      // 保留最近 10 条
+      if (messageHistory.value.length > 10) {
+        messageHistory.value.pop()
+      }
+    }
+  }
+
+  // 更新最近一条历史记录的文本（校正完成时调用，保留 original）
+  function updateLatestHistory(text: string) {
+    if (text && messageHistory.value.length > 0) {
+      // 使用 splice 触发 Vue 响应式更新，只更新 text
+      messageHistory.value.splice(0, 1, {
+        ...messageHistory.value[0],
+        text,
+        timestamp: Date.now()
+      })
     }
   }
 
@@ -250,6 +290,8 @@ export const useAppState = defineStore('appState', () => {
     targetLanguage,
     correctionEnabled,
     waveformLevels,
+    // 消息历史
+    messageHistory,
     // LLM 配置
     llmApiKey,
     llmApiBase,
@@ -262,6 +304,8 @@ export const useAppState = defineStore('appState', () => {
     setStatus,
     setConnectionStatus,
     setTranscript,
+    addToHistory,
+    updateLatestHistory,
     setError,
     setWaveformLevels,
     resetWaveformLevels,

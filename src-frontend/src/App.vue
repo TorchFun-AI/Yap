@@ -50,6 +50,14 @@ const expandedWithDropdownBounds = {
   bottom: WINDOW_BALL_SIZE + WINDOW_SHADOW + 110,
 }
 
+// 展开且有消息记录时的边界
+const expandedWithMessagesBounds = {
+  left: WINDOW_SHADOW,
+  top: WINDOW_SHADOW,
+  right: WINDOW_BALL_SIZE + 200 + WINDOW_SHADOW,
+  bottom: WINDOW_BALL_SIZE + WINDOW_SHADOW + 140,
+}
+
 let pollTimer: number | null = null
 let lastIgnoreState = true
 
@@ -115,10 +123,13 @@ const pollMousePosition = async () => {
     // 根据展开状态和下拉菜单状态选择检测区域
     const isExpanded = floatingBallRef.value?.isExpanded ?? false
     const hasDropdown = floatingBallRef.value?.hasDropdown ?? false
+    const hasMessages = floatingBallRef.value?.hasMessages ?? false
 
     let bounds = ballOnlyBounds
     if (isExpanded && hasDropdown) {
       bounds = expandedWithDropdownBounds
+    } else if (isExpanded && hasMessages) {
+      bounds = expandedWithMessagesBounds
     } else if (isExpanded) {
       bounds = expandedBounds
     }
@@ -168,6 +179,12 @@ const toggleRecording = () => {
       correctionEnabled: appState.correctionEnabled,
       targetLanguage: appState.targetLanguage || undefined,
       asrModelPath: appState.asrModelPath || undefined,
+      // LLM 配置
+      llmApiKey: appState.llmApiKey || undefined,
+      llmApiBase: appState.llmApiBase || undefined,
+      llmModel: appState.llmModel,
+      llmTimeout: appState.llmTimeout,
+      llmTemperature: appState.llmTemperature,
     })
     appState.setStatus(AppStatus.STARTING)
   }
@@ -200,9 +217,9 @@ onMounted(async () => {
 
   const savedPosition = await loadWindowPosition()
 
-  // 窗口大小：悬浮球 + 操作面板 + 下拉菜单空间
+  // 窗口大小：悬浮球 + 操作面板 + 下拉菜单/消息面板空间
   const totalWidth = WINDOW_BALL_SIZE + 200 + WINDOW_SHADOW * 2
-  const totalHeight = WINDOW_BALL_SIZE + WINDOW_SHADOW * 2 + 110
+  const totalHeight = WINDOW_BALL_SIZE + WINDOW_SHADOW * 2 + 150
 
   const { x, y } = await clampToScreen(savedPosition.x, savedPosition.y, totalWidth, totalHeight)
   await invoke('set_window_bounds', { x, y, width: totalWidth, height: totalHeight })
@@ -231,8 +248,14 @@ onMounted(async () => {
   })
 
   signalController.onMessage((data: any) => {
-    if (data.type === WsMessageType.TRANSCRIPTION || data.type === WsMessageType.CORRECTION) {
+    if (data.type === WsMessageType.TRANSCRIPTION) {
+      // 识别完成：添加到历史记录（text 和 original 都是原始文本）
+      appState.setTranscript(data.text)
+      appState.addToHistory(data.text, data.text)
+    } else if (data.type === WsMessageType.CORRECTION) {
+      // 校正完成：只更新 text，保留 original
       appState.setTranscript(data.text, data.original_text)
+      appState.updateLatestHistory(data.text)
     } else if (data.type === WsMessageType.VAD) {
       if (data.is_speech) {
         appState.setStatus(AppStatus.SPEAKING)

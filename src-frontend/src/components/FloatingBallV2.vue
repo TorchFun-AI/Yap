@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useAppState } from '@/stores/appState'
 import { BallIconColorMap, AppStatus } from '@/constants'
+import MessagePanel from './MessagePanel.vue'
 
 const { t } = useI18n()
 
@@ -180,6 +181,7 @@ const onActionHover = (actionId: string | null) => {
 defineExpose({
   isExpanded,
   hasDropdown: computed(() => activeDropdown.value !== null),
+  hasMessages: computed(() => recentMessages.value.length > 0),
 })
 
 // 图标 SVG 路径
@@ -362,6 +364,9 @@ const iconPaths: Record<string, string> = {
         </div>
       </div>
     </transition>
+
+    <!-- 消息记录面板 -->
+    <MessagePanel :visible="isExpanded" :max-count="3" />
   </div>
 </template>
 
