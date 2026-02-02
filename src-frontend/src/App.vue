@@ -24,8 +24,8 @@ const showSettings = ref(false)
 const floatingBallRef = ref<InstanceType<typeof FloatingBallV2> | null>(null)
 
 // 设置面板尺寸
-const SETTINGS_PANEL_WIDTH = 220
-const SETTINGS_PANEL_HEIGHT = 220
+const SETTINGS_PANEL_WIDTH = 420
+const SETTINGS_PANEL_HEIGHT = 340
 
 // 球区域的边界（相对于窗口，悬浮球在左上角）
 const ballOnlyBounds = {
