@@ -10,25 +10,25 @@ from typing import List
 class WaveformAnalyzer:
     """Analyzes audio data to generate waveform visualization levels."""
 
-    # Frequency band boundaries (Hz)
-    # 5 bands: low, mid-low, mid, mid-high, high
-    BAND_EDGES = [20, 150, 400, 1000, 3000, 8000]
+    # Sample 5 points from FFT bin range (rfft returns 257 bins for 512 samples)
+    # Range 32-224 covers ~1000-7000 Hz at 16kHz sample rate
+    SAMPLE_INDICES = [10,20,30,40,50]
 
     def __init__(self, sample_rate: int = 16000):
         self.sample_rate = sample_rate
         self._buffer = np.array([], dtype=np.int16)
-        # Minimum samples needed for FFT (about 32ms at 16kHz)
+        # FFT size 512
         self._min_samples = 512
 
     def analyze(self, audio_bytes: bytes) -> List[float]:
         """
-        Analyze audio chunk and return 5 normalized frequency band levels.
+        Analyze audio chunk and return 5 normalized levels.
 
         Args:
             audio_bytes: Raw audio bytes (int16)
 
         Returns:
-            List of 5 float values (0.0 - 1.0) representing frequency band levels
+            List of 5 float values (0.0 - 1.0)
         """
         # Convert bytes to numpy array
         audio_data = np.frombuffer(audio_bytes, dtype=np.int16)
@@ -36,63 +36,32 @@ class WaveformAnalyzer:
         # Append to buffer
         self._buffer = np.concatenate([self._buffer, audio_data])
 
-        # Keep only recent samples (about 64ms worth)
+        # Keep only recent samples
         max_samples = self._min_samples * 2
         if len(self._buffer) > max_samples:
             self._buffer = self._buffer[-max_samples:]
 
-        # Need minimum samples for meaningful FFT
+        # Need minimum samples for FFT
         if len(self._buffer) < self._min_samples:
             return [0.0, 0.0, 0.0, 0.0, 0.0]
 
-        # Apply window function to reduce spectral leakage
+        # Apply window function
         windowed = self._buffer[-self._min_samples:] * np.hanning(self._min_samples)
 
         # Perform FFT
         fft_result = np.fft.rfft(windowed)
         fft_magnitude = np.abs(fft_result)
 
-        # Calculate frequency resolution
-        freq_resolution = self.sample_rate / self._min_samples
-        freqs = np.fft.rfftfreq(self._min_samples, 1.0 / self.sample_rate)
+        # Sample 5 points
+        levels = [float(fft_magnitude[i]) for i in self.SAMPLE_INDICES if i < len(fft_magnitude)]
 
-        # Calculate energy in each frequency band
-        levels = []
-        for i in range(len(self.BAND_EDGES) - 1):
-            low_freq = self.BAND_EDGES[i]
-            high_freq = self.BAND_EDGES[i + 1]
+        # Pad if needed
+        while len(levels) < 5:
+            levels.append(0.0)
 
-            # Find indices for this frequency band
-            low_idx = int(low_freq / freq_resolution)
-            high_idx = int(high_freq / freq_resolution)
-
-            # Clamp indices
-            low_idx = max(0, min(low_idx, len(fft_magnitude) - 1))
-            high_idx = max(low_idx + 1, min(high_idx, len(fft_magnitude)))
-
-            # Calculate band energy (RMS of magnitudes)
-            if high_idx > low_idx:
-                band_energy = np.sqrt(np.mean(fft_magnitude[low_idx:high_idx] ** 2))
-            else:
-                band_energy = 0.0
-
-            levels.append(band_energy)
-
-        # Normalize levels to 0-1 range
-        # Use dynamic normalization based on max energy
-        max_level = max(levels) if levels else 1.0
-        if max_level > 0:
-            # Apply logarithmic scaling for better visual response
-            normalized = []
-            for level in levels:
-                # Normalize and apply log scaling
-                norm = level / max_level
-                # Apply power curve for better visual response
-                norm = np.power(norm, 0.6)
-                normalized.append(float(min(1.0, max(0.0, norm))))
-            return normalized
-        else:
-            return [0.0, 0.0, 0.0, 0.0, 0.0]
+        # Simple normalization with fixed max value
+        max_val = 4096.0 * 16
+        return [min(1.0, level / max_val) for level in levels]
 
     def reset(self):
         """Reset the analyzer buffer."""
