@@ -122,6 +122,60 @@ fn get_cursor_position() -> Result<WindowPosition, String> {
     }
 }
 
+/// 打开设置窗口
+#[tauri::command]
+fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
+    // 如果窗口已存在，显示并聚焦
+    if let Some(window) = app.get_webview_window("settings") {
+        #[cfg(target_os = "macos")]
+        {
+            let _ = window.set_shadow(false);
+        }
+        window.show().map_err(|e| e.to_string())?;
+        window.center().map_err(|e| e.to_string())?;
+        window.set_focus().map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+
+    // 动态创建设置窗口
+    let settings_window = tauri::WebviewWindowBuilder::new(
+        &app,
+        "settings",
+        tauri::WebviewUrl::App("settings.html".into()),
+    )
+    .title("Settings")
+    .inner_size(560.0, 440.0)
+    .resizable(false)
+    .center()
+    .decorations(false)
+    .transparent(true)
+    .build()
+    .map_err(|e| e.to_string())?;
+
+    #[cfg(target_os = "macos")]
+    {
+        let _ = settings_window.set_shadow(false);
+    }
+
+    settings_window.set_focus().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// 关闭设置窗口（隐藏而非销毁）
+#[tauri::command]
+fn close_settings_window(app: tauri::AppHandle) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("settings") {
+        window.hide().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+/// 广播设置变更事件到所有窗口
+#[tauri::command]
+fn broadcast_settings_changed(app: tauri::AppHandle) -> Result<(), String> {
+    app.emit("settings-changed", ()).map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -182,7 +236,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![greet, save_window_position, load_window_position, set_window_bounds, set_ignore_cursor_events, get_cursor_position])
+        .invoke_handler(tauri::generate_handler![greet, save_window_position, load_window_position, set_window_bounds, set_ignore_cursor_events, get_cursor_position, open_settings_window, close_settings_window, broadcast_settings_changed])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

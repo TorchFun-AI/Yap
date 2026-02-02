@@ -2,8 +2,8 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { getCurrentWindow, availableMonitors } from '@tauri-apps/api/window'
 import { invoke } from '@tauri-apps/api/core'
+import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import FloatingBallV2 from './components/FloatingBallV2.vue'
-import SettingsPanel from './components/SettingsPanel.vue'
 import { useAppState } from '@/stores/appState'
 import { signalController } from '@/services/signalController'
 import { waveformController } from '@/services/waveformController'
@@ -18,14 +18,11 @@ import {
   WINDOW_SHADOW,
   DEFAULT_WINDOW_POSITION,
 } from '@/constants'
+import { setLocale } from '@/i18n'
 
 const appState = useAppState()
-const showSettings = ref(false)
 const floatingBallRef = ref<InstanceType<typeof FloatingBallV2> | null>(null)
-
-// 设置面板尺寸
-const SETTINGS_PANEL_WIDTH = 420
-const SETTINGS_PANEL_HEIGHT = 340
+let unlistenSettingsChanged: UnlistenFn | null = null
 
 // 球区域的边界（相对于窗口，悬浮球在左上角）
 const ballOnlyBounds = {
@@ -49,14 +46,6 @@ const expandedWithDropdownBounds = {
   top: WINDOW_SHADOW,
   right: WINDOW_BALL_SIZE + 200 + WINDOW_SHADOW,
   bottom: WINDOW_BALL_SIZE + WINDOW_SHADOW + 110,
-}
-
-// 设置面板展开时的边界
-const settingsPanelBounds = {
-  left: WINDOW_SHADOW,
-  top: WINDOW_SHADOW,
-  right: Math.max(WINDOW_BALL_SIZE + 200, SETTINGS_PANEL_WIDTH) + WINDOW_SHADOW,
-  bottom: WINDOW_BALL_SIZE + 8 + SETTINGS_PANEL_HEIGHT + WINDOW_SHADOW,
 }
 
 let pollTimer: number | null = null
@@ -124,12 +113,9 @@ const pollMousePosition = async () => {
     // 根据展开状态和下拉菜单状态选择检测区域
     const isExpanded = floatingBallRef.value?.isExpanded ?? false
     const hasDropdown = floatingBallRef.value?.hasDropdown ?? false
-    const isSettingsOpen = showSettings.value
 
     let bounds = ballOnlyBounds
-    if (isSettingsOpen) {
-      bounds = settingsPanelBounds
-    } else if (isExpanded && hasDropdown) {
+    if (isExpanded && hasDropdown) {
       bounds = expandedWithDropdownBounds
     } else if (isExpanded) {
       bounds = expandedBounds
@@ -186,21 +172,35 @@ const toggleRecording = () => {
 }
 
 // 处理操作区事件
-const handleAction = (id: string, _value?: string) => {
+const handleAction = async (id: string, _value?: string) => {
   if (id === 'record') {
     toggleRecording()
   } else if (id === 'settings') {
-    showSettings.value = !showSettings.value
+    try {
+      await invoke('open_settings_window')
+    } catch (e) {
+      console.error('Failed to open settings window:', e)
+    }
   }
 }
 
 // 初始化窗口 - 固定大小
 onMounted(async () => {
+  // 监听设置变更事件（实时同步）
+  unlistenSettingsChanged = await listen('settings-changed', () => {
+    appState.reloadFromStorage()
+    // 重新加载界面语言
+    const savedLocale = localStorage.getItem('app-locale') as 'zh' | 'en' | null
+    if (savedLocale) {
+      setLocale(savedLocale)
+    }
+  })
+
   const savedPosition = await loadWindowPosition()
 
-  // 窗口大小：悬浮球 + 操作面板 + 设置面板
-  const totalWidth = Math.max(WINDOW_BALL_SIZE + 200, SETTINGS_PANEL_WIDTH) + WINDOW_SHADOW * 2
-  const totalHeight = WINDOW_BALL_SIZE + 8 + SETTINGS_PANEL_HEIGHT + WINDOW_SHADOW * 2
+  // 窗口大小：悬浮球 + 操作面板 + 下拉菜单空间
+  const totalWidth = WINDOW_BALL_SIZE + 200 + WINDOW_SHADOW * 2
+  const totalHeight = WINDOW_BALL_SIZE + WINDOW_SHADOW * 2 + 110
 
   const { x, y } = await clampToScreen(savedPosition.x, savedPosition.y, totalWidth, totalHeight)
   await invoke('set_window_bounds', { x, y, width: totalWidth, height: totalHeight })
@@ -260,6 +260,9 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  if (unlistenSettingsChanged) {
+    unlistenSettingsChanged()
+  }
   stopPolling()
   signalController.disconnect()
   waveformController.disconnect()
@@ -270,11 +273,7 @@ onUnmounted(() => {
 <template>
   <div class="app-container">
     <div class="ball-wrapper">
-      <FloatingBallV2 ref="floatingBallRef" :settings-open="showSettings" @action="handleAction" @drag="showSettings = false" />
-      <!-- 设置面板 -->
-      <transition name="settings-slide">
-        <SettingsPanel v-if="showSettings" @close="showSettings = false" />
-      </transition>
+      <FloatingBallV2 ref="floatingBallRef" @action="handleAction" />
     </div>
   </div>
 </template>
@@ -296,36 +295,5 @@ onUnmounted(() => {
   justify-content: flex-start;
   flex-shrink: 0;
   position: relative;
-}
-
-/* 设置面板动画 */
-.settings-slide-enter-active {
-  animation: settingsSlideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.settings-slide-leave-active {
-  animation: settingsSlideOut 0.2s ease-out;
-}
-
-@keyframes settingsSlideIn {
-  0% {
-    opacity: 0;
-    transform: translateY(-8px) scale(0.95);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-@keyframes settingsSlideOut {
-  0% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(-8px) scale(0.95);
-  }
 }
 </style>

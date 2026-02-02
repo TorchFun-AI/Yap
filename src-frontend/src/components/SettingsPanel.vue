@@ -1,14 +1,20 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { invoke } from '@tauri-apps/api/core'
 import { useAppState } from '@/stores/appState'
 import { AppStatus } from '@/constants'
 import { setLocale, getLocale } from '@/i18n'
 
 const { t } = useI18n()
 
+const props = defineProps<{
+  isStandalone?: boolean
+}>()
+
 const emit = defineEmits<{
   close: []
+  'start-drag': []
 }>()
 
 const appState = useAppState()
@@ -97,6 +103,7 @@ function onApiBaseChange(value: string) {
 const onLocaleChange = (value: 'zh' | 'en') => {
   currentLocale.value = value
   setLocale(value)
+  invoke('broadcast_settings_changed').catch(() => {})
 }
 
 // ASR 模型管理
@@ -184,11 +191,11 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="settings-panel">
-    <!-- 面板头部 -->
-    <div class="panel-header">
+  <div class="settings-panel" :class="{ standalone: props.isStandalone }">
+    <!-- 面板头部（支持拖动窗口） -->
+    <div class="panel-header" @mousedown="emit('start-drag')">
       <span class="panel-title">{{ t('settings.title') }}</span>
-      <button class="close-btn" @click="emit('close')">
+      <button class="close-btn" @click.stop="emit('close')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M18 6L6 18M6 6l12 12" />
         </svg>
@@ -433,6 +440,21 @@ onMounted(() => {
   height: 340px;
   display: flex;
   flex-direction: column;
+}
+
+.settings-panel.standalone {
+  position: relative;
+  top: 0;
+  left: 0;
+  width: calc(100% - 32px);
+  height: calc(100% - 32px);
+  margin: 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  background: rgba(28, 28, 30, 0.85);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
 }
 
 .panel-header {

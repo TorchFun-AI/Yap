@@ -17,13 +17,11 @@ interface ActionItem {
 
 const props = defineProps<{
   actions?: ActionItem[]
-  settingsOpen?: boolean
 }>()
 
 const emit = defineEmits<{
   click: []
   action: [id: string, value?: string]
-  drag: []
 }>()
 
 const appState = useAppState()
@@ -146,9 +144,6 @@ const onBallClick = () => {
 }
 
 const onActionClick = (action: ActionItem) => {
-  // 设置面板打开时，只允许点击设置按钮
-  if (props.settingsOpen && action.id !== 'settings') return
-
   if (action.options) {
     activeDropdown.value = activeDropdown.value === action.id ? null : action.id
   } else if (action.id === 'record') {
@@ -332,8 +327,8 @@ const iconPaths: Record<string, string> = {
         >
           <div class="action-icon" :class="{
             active: activeDropdown === action.id,
-            toggled: (action.id === 'correction' && selectedValues.correction) || (action.id === 'record' && isActive) || (action.id === 'settings' && props.settingsOpen),
-            disabled: (action.id === 'record' && isRecordDisabled) || (action.id !== 'settings' && props.settingsOpen)
+            toggled: (action.id === 'correction' && selectedValues.correction) || (action.id === 'record' && isActive),
+            disabled: action.id === 'record' && isRecordDisabled
           }">
             <svg viewBox="0 0 24 24" fill="currentColor">
               <path :d="iconPaths[action.icon] || iconPaths.sparkles" />

@@ -1,8 +1,14 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { invoke } from '@tauri-apps/api/core'
 import type { ConnectionStatus } from '@/services/signalController'
 import { signalController } from '@/services/signalController'
 import { RECORDING_DEFAULT_LANGUAGE } from '@/constants'
+
+// 通知其他窗口设置已变更
+function notifySettingsChanged() {
+  invoke('broadcast_settings_changed', { settings: {} }).catch(() => {})
+}
 
 export type AppStatus = 'idle' | 'starting' | 'listening' | 'transcribing' | 'correcting' | 'translating' | 'speaking' | 'error'
 
@@ -118,18 +124,21 @@ export const useAppState = defineStore('appState', () => {
     asrLanguage.value = lang
     localStorage.setItem(STORAGE_KEYS.asrLanguage, lang)
     syncConfigToBackend()
+    notifySettingsChanged()
   }
 
   function setTargetLanguage(lang: string) {
     targetLanguage.value = lang
     localStorage.setItem(STORAGE_KEYS.targetLanguage, lang)
     syncConfigToBackend()
+    notifySettingsChanged()
   }
 
   function setCorrectionEnabled(enabled: boolean) {
     correctionEnabled.value = enabled
     localStorage.setItem(STORAGE_KEYS.correctionEnabled, String(enabled))
     syncConfigToBackend()
+    notifySettingsChanged()
   }
 
   // LLM 配置 setters
@@ -137,30 +146,35 @@ export const useAppState = defineStore('appState', () => {
     llmApiKey.value = apiKey
     localStorage.setItem(STORAGE_KEYS.llmApiKey, apiKey)
     syncLlmConfigToBackend()
+    notifySettingsChanged()
   }
 
   function setLlmApiBase(apiBase: string) {
     llmApiBase.value = apiBase
     localStorage.setItem(STORAGE_KEYS.llmApiBase, apiBase)
     syncLlmConfigToBackend()
+    notifySettingsChanged()
   }
 
   function setLlmModel(model: string) {
     llmModel.value = model
     localStorage.setItem(STORAGE_KEYS.llmModel, model)
     syncLlmConfigToBackend()
+    notifySettingsChanged()
   }
 
   function setLlmTimeout(timeout: number) {
     llmTimeout.value = timeout
     localStorage.setItem(STORAGE_KEYS.llmTimeout, String(timeout))
     syncLlmConfigToBackend()
+    notifySettingsChanged()
   }
 
   function setLlmTemperature(temperature: number) {
     llmTemperature.value = temperature
     localStorage.setItem(STORAGE_KEYS.llmTemperature, String(temperature))
     syncLlmConfigToBackend()
+    notifySettingsChanged()
   }
 
   // ASR 配置 setter
@@ -168,6 +182,7 @@ export const useAppState = defineStore('appState', () => {
     asrModelPath.value = path
     localStorage.setItem(STORAGE_KEYS.asrModelPath, path)
     syncConfigToBackend()
+    notifySettingsChanged()
   }
 
   // 同步 LLM 配置到后端
@@ -201,6 +216,25 @@ export const useAppState = defineStore('appState', () => {
     originalTranscript.value = ''
     errorMessage.value = ''
     waveformLevels.value = [0, 0, 0, 0, 0]
+  }
+
+  // 从 localStorage 重新加载配置（用于跨窗口同步）
+  function reloadFromStorage() {
+    const settings = loadSettings()
+    applySettings(settings)
+  }
+
+  // 从事件数据应用设置（用于跨窗口同步）
+  function applySettings(settings: Record<string, any>) {
+    if (settings.asrLanguage !== undefined) asrLanguage.value = settings.asrLanguage
+    if (settings.targetLanguage !== undefined) targetLanguage.value = settings.targetLanguage
+    if (settings.correctionEnabled !== undefined) correctionEnabled.value = settings.correctionEnabled
+    if (settings.llmApiKey !== undefined) llmApiKey.value = settings.llmApiKey
+    if (settings.llmApiBase !== undefined) llmApiBase.value = settings.llmApiBase
+    if (settings.llmModel !== undefined) llmModel.value = settings.llmModel
+    if (settings.llmTimeout !== undefined) llmTimeout.value = settings.llmTimeout
+    if (settings.llmTemperature !== undefined) llmTemperature.value = settings.llmTemperature
+    if (settings.asrModelPath !== undefined) asrModelPath.value = settings.asrModelPath
   }
 
   return {
@@ -244,5 +278,7 @@ export const useAppState = defineStore('appState', () => {
     setAsrModelPath,
     syncLlmConfigToBackend,
     reset,
+    reloadFromStorage,
+    applySettings,
   }
 })
