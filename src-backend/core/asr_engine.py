@@ -59,3 +59,11 @@ class ASREngine:
         """Async wrapper for transcribe."""
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(self.executor, self.transcribe, audio_float32, language)
+
+    def set_model_path(self, model_path: str) -> None:
+        """设置模型路径（需要重新初始化）"""
+        if model_path != self.model_path:
+            self.model_path = model_path
+            self.is_initialized = False
+            self.model = None
+            logger.info(f"ASR model path changed to: {model_path}")
