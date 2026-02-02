@@ -23,7 +23,7 @@ const floatingBallRef = ref<InstanceType<typeof FloatingBallV2> | null>(null)
 
 // 设置面板尺寸
 const SETTINGS_PANEL_WIDTH = 220
-const SETTINGS_PANEL_HEIGHT = 180
+const SETTINGS_PANEL_HEIGHT = 220
 
 // 球区域的边界（相对于窗口，悬浮球在左上角）
 const ballOnlyBounds = {
@@ -60,7 +60,8 @@ const settingsPanelBounds = {
 let pollTimer: number | null = null
 let lastIgnoreState = true
 
-// 保存窗口位置到 Tauri store
+// 保存窗口位置到 Tauri store (保留供后续使用)
+// @ts-expect-error 暂未使用
 const _saveWindowPosition = async (x: number, y: number) => {
   try {
     await invoke('save_window_position', { x, y })

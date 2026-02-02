@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useAppState } from '@/stores/appState'
 import { BallIconColorMap, AppStatus } from '@/constants'
+
+const { t } = useI18n()
 
 interface ActionItem {
   id: string
@@ -43,48 +46,48 @@ const selectedValues = computed(() => ({
   correction: appState.correctionEnabled,
 }))
 
-// 默认操作项
-const defaultActions: ActionItem[] = [
+// 默认操作项 - 使用计算属性实现响应式翻译
+const defaultActions = computed<ActionItem[]>(() => [
   {
     id: 'record',
     icon: 'mic',
-    label: '录音',
+    label: t('actions.record'),
   },
   {
     id: 'language',
     icon: 'globe',
-    label: '识别语言',
+    label: t('actions.language'),
     options: [
-      { value: 'auto', label: '自动检测' },
-      { value: 'zh', label: '中文' },
-      { value: 'en', label: 'English' },
-      { value: 'ja', label: '日本語' },
+      { value: 'auto', label: t('asrLanguages.auto') },
+      { value: 'zh', label: t('asrLanguages.zh') },
+      { value: 'en', label: t('asrLanguages.en') },
+      { value: 'ja', label: t('asrLanguages.ja') },
     ]
   },
   {
     id: 'translate',
     icon: 'translate',
-    label: '翻译',
+    label: t('actions.translate'),
     options: [
-      { value: '', label: '不翻译' },
-      { value: '中文', label: '中文' },
-      { value: 'English', label: 'English' },
-      { value: '日本語', label: '日本語' },
+      { value: '', label: t('translateLanguages.none') },
+      { value: '中文', label: t('translateLanguages.zh') },
+      { value: 'English', label: t('translateLanguages.en') },
+      { value: '日本語', label: t('translateLanguages.ja') },
     ]
   },
   {
     id: 'correction',
     icon: 'edit',
-    label: '文本校正',
+    label: t('actions.correction'),
   },
   {
     id: 'settings',
     icon: 'settings',
-    label: '设置',
+    label: t('actions.settings'),
   },
-]
+])
 
-const actionItems = computed(() => props.actions || defaultActions)
+const actionItems = computed(() => props.actions || defaultActions.value)
 
 const onMouseEnter = () => {
   // 不再通过 hover 展开

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import type { ConnectionStatus } from '@/services/signalController'
 import { signalController } from '@/services/signalController'
 import { RECORDING_DEFAULT_LANGUAGE } from '@/constants'

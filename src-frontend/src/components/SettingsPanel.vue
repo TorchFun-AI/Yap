@@ -1,7 +1,11 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useAppState } from '@/stores/appState'
-import { ASR_LANGUAGES, TRANSLATE_LANGUAGES, AppStatus } from '@/constants'
+import { AppStatus } from '@/constants'
+import { setLocale, getLocale } from '@/i18n'
+
+const { t } = useI18n()
 
 const emit = defineEmits<{
   close: []
@@ -18,13 +22,49 @@ const isRecording = computed(() =>
   appState.status === AppStatus.TRANSLATING ||
   appState.status === AppStatus.SPEAKING
 )
+
+// 动态生成 ASR 语言选项
+const asrLanguageOptions = computed(() => [
+  { value: 'auto', label: t('asrLanguages.auto') },
+  { value: 'zh', label: t('asrLanguages.zh') },
+  { value: 'en', label: t('asrLanguages.en') },
+  { value: 'ja', label: t('asrLanguages.ja') },
+  { value: 'ko', label: t('asrLanguages.ko') },
+  { value: 'yue', label: t('asrLanguages.yue') },
+])
+
+// 动态生成翻译语言选项
+const translateLanguageOptions = computed(() => [
+  { value: '', label: t('translateLanguages.none') },
+  { value: '中文', label: t('translateLanguages.zh') },
+  { value: 'English', label: t('translateLanguages.en') },
+  { value: '日本語', label: t('translateLanguages.ja') },
+  { value: '한국어', label: t('translateLanguages.ko') },
+  { value: 'Français', label: t('translateLanguages.fr') },
+  { value: 'Deutsch', label: t('translateLanguages.de') },
+  { value: 'Español', label: t('translateLanguages.es') },
+])
+
+// 界面语言选项
+const localeOptions = [
+  { value: 'zh', label: '中文' },
+  { value: 'en', label: 'English' },
+]
+
+// 当前界面语言
+const currentLocale = ref(getLocale())
+
+const onLocaleChange = (value: 'zh' | 'en') => {
+  currentLocale.value = value
+  setLocale(value)
+}
 </script>
 
 <template>
   <div class="settings-panel">
     <!-- 面板头部 -->
     <div class="panel-header">
-      <span class="panel-title">设置</span>
+      <span class="panel-title">{{ t('settings.title') }}</span>
       <button class="close-btn" @click="emit('close')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M18 6L6 18M6 6l12 12" />
@@ -34,6 +74,27 @@ const isRecording = computed(() =>
 
     <!-- 配置内容 -->
     <div class="panel-content">
+      <!-- UI Language -->
+      <div class="config-item">
+        <svg class="config-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M5 8l6 6" />
+          <path d="M4 14l6-6 2-3" />
+          <path d="M2 5h12" />
+          <path d="M7 2h1" />
+          <path d="M22 22l-5-10-5 10" />
+          <path d="M14 18h6" />
+        </svg>
+        <span class="config-label">{{ t('settings.uiLanguage') }}</span>
+        <a-select
+          :value="currentLocale"
+          @update:value="onLocaleChange"
+          :options="localeOptions"
+          size="small"
+          class="config-select"
+          :dropdown-style="{ background: '#2c2c2e' }"
+        />
+      </div>
+
       <!-- Language -->
       <div class="config-item">
         <svg class="config-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -41,12 +102,12 @@ const isRecording = computed(() =>
           <path d="M2 12h20" />
           <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
         </svg>
-        <span class="config-label">识别语言</span>
+        <span class="config-label">{{ t('settings.asrLanguage') }}</span>
         <a-select
           :value="appState.asrLanguage"
           @update:value="appState.setAsrLanguage"
           :disabled="isRecording"
-          :options="ASR_LANGUAGES"
+          :options="asrLanguageOptions"
           size="small"
           class="config-select"
           :dropdown-style="{ background: '#2c2c2e' }"
@@ -59,7 +120,7 @@ const isRecording = computed(() =>
           <path d="M12 20h9" />
           <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
         </svg>
-        <span class="config-label">文本校正</span>
+        <span class="config-label">{{ t('settings.correction') }}</span>
         <a-switch
           :checked="appState.correctionEnabled"
           @update:checked="appState.setCorrectionEnabled"
@@ -78,12 +139,12 @@ const isRecording = computed(() =>
           <path d="M22 22l-5-10-5 10" />
           <path d="M14 18h6" />
         </svg>
-        <span class="config-label">翻译</span>
+        <span class="config-label">{{ t('settings.translate') }}</span>
         <a-select
           :value="appState.targetLanguage"
           @update:value="appState.setTargetLanguage"
           :disabled="isRecording"
-          :options="TRANSLATE_LANGUAGES"
+          :options="translateLanguageOptions"
           size="small"
           class="config-select"
           placeholder="Off"
