@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppState } from '@/stores/appState'
 import { AppStatus } from '@/constants'
@@ -12,6 +12,9 @@ const emit = defineEmits<{
 }>()
 
 const appState = useAppState()
+
+// 当前选中的设置标签
+const activeTab = ref<'general' | 'llm' | 'asr'>('general')
 
 // 录音中时禁用配置修改
 const isRecording = computed(() =>
@@ -54,10 +57,130 @@ const localeOptions = [
 // 当前界面语言
 const currentLocale = ref(getLocale())
 
+// LLM 模型选项（从 API 动态获取）
+const llmModelOptions = ref<{value: string}[]>([])
+const isLoadingModels = ref(false)
+
+// 从 API 获取模型列表
+async function fetchLlmModels() {
+  const apiBase = appState.llmApiBase || 'http://localhost:11434/v1'
+  isLoadingModels.value = true
+
+  try {
+    const headers: Record<string, string> = {}
+    if (appState.llmApiKey) {
+      headers['Authorization'] = `Bearer ${appState.llmApiKey}`
+    }
+
+    const res = await fetch(`${apiBase}/models`, { headers })
+    if (res.ok) {
+      const data = await res.json()
+      const models = data.data || []
+      llmModelOptions.value = models
+        .map((m: any) => ({ value: m.id }))
+        .sort((a: any, b: any) => a.value.localeCompare(b.value))
+    }
+  } catch (e) {
+    console.error('Failed to fetch LLM models:', e)
+    llmModelOptions.value = []
+  } finally {
+    isLoadingModels.value = false
+  }
+}
+
+// API 地址变更时重新获取模型列表
+function onApiBaseChange(value: string) {
+  appState.setLlmApiBase(value)
+  fetchLlmModels()
+}
+
 const onLocaleChange = (value: 'zh' | 'en') => {
   currentLocale.value = value
   setLocale(value)
 }
+
+// ASR 模型管理
+interface LocalModel {
+  name: string
+  path: string
+  size: string
+}
+
+interface AvailableModel {
+  id: string
+  name: string
+  size: string
+  description: string
+  downloaded: boolean
+}
+
+const localModels = ref<LocalModel[]>([])
+const availableModels = ref<AvailableModel[]>([])
+const downloadingModels = ref<Set<string>>(new Set())
+
+const API_BASE = 'http://127.0.0.1:8765'
+
+async function fetchLocalModels() {
+  try {
+    const res = await fetch(`${API_BASE}/api/models/local`)
+    const data = await res.json()
+    localModels.value = data.models || []
+  } catch (e) {
+    console.error('Failed to fetch local models:', e)
+  }
+}
+
+async function fetchAvailableModels() {
+  try {
+    const res = await fetch(`${API_BASE}/api/models/available`)
+    const data = await res.json()
+    availableModels.value = data.models || []
+  } catch (e) {
+    console.error('Failed to fetch available models:', e)
+  }
+}
+
+async function downloadModel(modelId: string) {
+  if (downloadingModels.value.has(modelId)) return
+
+  downloadingModels.value.add(modelId)
+  try {
+    await fetch(`${API_BASE}/api/models/download`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model_id: modelId }),
+    })
+    // 轮询下载进度
+    const checkProgress = async () => {
+      const res = await fetch(`${API_BASE}/api/models/progress/${encodeURIComponent(modelId)}`)
+      const progress = await res.json()
+      if (progress.status === 'completed') {
+        downloadingModels.value.delete(modelId)
+        await fetchLocalModels()
+        await fetchAvailableModels()
+      } else if (progress.status === 'failed') {
+        downloadingModels.value.delete(modelId)
+        console.error('Download failed:', progress.error)
+      } else {
+        setTimeout(checkProgress, 2000)
+      }
+    }
+    setTimeout(checkProgress, 1000)
+  } catch (e) {
+    downloadingModels.value.delete(modelId)
+    console.error('Failed to start download:', e)
+  }
+}
+
+function selectModel(path: string) {
+  appState.setAsrModelPath(path)
+}
+
+onMounted(() => {
+  fetchLocalModels()
+  fetchAvailableModels()
+  fetchLlmModels()
+})
 </script>
 
 <template>
@@ -72,84 +195,223 @@ const onLocaleChange = (value: 'zh' | 'en') => {
       </button>
     </div>
 
-    <!-- 配置内容 -->
-    <div class="panel-content">
-      <!-- UI Language -->
-      <div class="config-item">
-        <svg class="config-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M5 8l6 6" />
-          <path d="M4 14l6-6 2-3" />
-          <path d="M2 5h12" />
-          <path d="M7 2h1" />
-          <path d="M22 22l-5-10-5 10" />
-          <path d="M14 18h6" />
-        </svg>
-        <span class="config-label">{{ t('settings.uiLanguage') }}</span>
-        <a-select
-          :value="currentLocale"
-          @update:value="onLocaleChange"
-          :options="localeOptions"
-          size="small"
-          class="config-select"
-          :dropdown-style="{ background: '#2c2c2e' }"
-        />
+    <div class="panel-body">
+      <!-- 左侧标签导航 -->
+      <div class="tabs-nav">
+        <div
+          class="tab-item"
+          :class="{ active: activeTab === 'general' }"
+          @click="activeTab = 'general'"
+        >
+          <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+          <span>{{ t('settings.tabs.general') }}</span>
+        </div>
+        <div
+          class="tab-item"
+          :class="{ active: activeTab === 'llm' }"
+          @click="activeTab = 'llm'"
+        >
+          <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+          <span>{{ t('settings.tabs.llm') }}</span>
+        </div>
+        <div
+          class="tab-item"
+          :class="{ active: activeTab === 'asr' }"
+          @click="activeTab = 'asr'"
+        >
+          <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+            <line x1="12" y1="19" x2="12" y2="23" />
+            <line x1="8" y1="23" x2="16" y2="23" />
+          </svg>
+          <span>{{ t('settings.tabs.asr') }}</span>
+        </div>
       </div>
 
-      <!-- Language -->
-      <div class="config-item">
-        <svg class="config-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <circle cx="12" cy="12" r="10" />
-          <path d="M2 12h20" />
-          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-        </svg>
-        <span class="config-label">{{ t('settings.asrLanguage') }}</span>
-        <a-select
-          :value="appState.asrLanguage"
-          @update:value="appState.setAsrLanguage"
-          :disabled="isRecording"
-          :options="asrLanguageOptions"
-          size="small"
-          class="config-select"
-          :dropdown-style="{ background: '#2c2c2e' }"
-        />
-      </div>
+      <!-- 右侧内容区 -->
+      <div class="tab-content">
+        <!-- 通用设置 -->
+        <div v-show="activeTab === 'general'" class="tab-pane">
+          <!-- UI Language -->
+          <div class="config-item">
+            <span class="config-label">{{ t('settings.uiLanguage') }}</span>
+            <a-select
+              :value="currentLocale"
+              @update:value="onLocaleChange"
+              :options="localeOptions"
+              size="small"
+              class="config-select"
+              :dropdown-style="{ background: '#2c2c2e' }"
+            />
+          </div>
 
-      <!-- Correction -->
-      <div class="config-item">
-        <svg class="config-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M12 20h9" />
-          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-        </svg>
-        <span class="config-label">{{ t('settings.correction') }}</span>
-        <a-switch
-          :checked="appState.correctionEnabled"
-          @update:checked="appState.setCorrectionEnabled"
-          :disabled="isRecording"
-          size="small"
-        />
-      </div>
+          <!-- ASR Language -->
+          <div class="config-item">
+            <span class="config-label">{{ t('settings.asrLanguage') }}</span>
+            <a-select
+              :value="appState.asrLanguage"
+              @update:value="appState.setAsrLanguage"
+              :disabled="isRecording"
+              :options="asrLanguageOptions"
+              size="small"
+              class="config-select"
+              :dropdown-style="{ background: '#2c2c2e' }"
+            />
+          </div>
 
-      <!-- Translate -->
-      <div class="config-item">
-        <svg class="config-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M5 8l6 6" />
-          <path d="M4 14l6-6 2-3" />
-          <path d="M2 5h12" />
-          <path d="M7 2h1" />
-          <path d="M22 22l-5-10-5 10" />
-          <path d="M14 18h6" />
-        </svg>
-        <span class="config-label">{{ t('settings.translate') }}</span>
-        <a-select
-          :value="appState.targetLanguage"
-          @update:value="appState.setTargetLanguage"
-          :disabled="isRecording"
-          :options="translateLanguageOptions"
-          size="small"
-          class="config-select"
-          placeholder="Off"
-          :dropdown-style="{ background: '#2c2c2e' }"
-        />
+          <!-- Correction -->
+          <div class="config-item">
+            <span class="config-label">{{ t('settings.correction') }}</span>
+            <a-switch
+              :checked="appState.correctionEnabled"
+              @update:checked="appState.setCorrectionEnabled"
+              :disabled="isRecording"
+              size="small"
+            />
+          </div>
+
+          <!-- Translate -->
+          <div class="config-item">
+            <span class="config-label">{{ t('settings.translate') }}</span>
+            <a-select
+              :value="appState.targetLanguage"
+              @update:value="appState.setTargetLanguage"
+              :disabled="isRecording"
+              :options="translateLanguageOptions"
+              size="small"
+              class="config-select"
+              placeholder="Off"
+              :dropdown-style="{ background: '#2c2c2e' }"
+            />
+          </div>
+        </div>
+
+        <!-- LLM 设置 -->
+        <div v-show="activeTab === 'llm'" class="tab-pane">
+          <!-- API Base -->
+          <div class="config-item">
+            <span class="config-label">{{ t('settings.llm.apiBase') }}</span>
+            <a-input
+              :value="appState.llmApiBase"
+              @update:value="onApiBaseChange"
+              size="small"
+              class="config-input"
+            />
+          </div>
+
+          <!-- API Key -->
+          <div class="config-item">
+            <span class="config-label">{{ t('settings.llm.apiKey') }}</span>
+            <a-input-password
+              :value="appState.llmApiKey"
+              @update:value="appState.setLlmApiKey"
+              size="small"
+              class="config-input"
+              :placeholder="t('settings.llm.apiKeyPlaceholder')"
+            />
+          </div>
+
+          <!-- Model -->
+          <div class="config-item">
+            <span class="config-label">{{ t('settings.llm.model') }}</span>
+            <a-auto-complete
+              :value="appState.llmModel"
+              @update:value="appState.setLlmModel"
+              :options="llmModelOptions"
+              size="small"
+              class="config-input"
+              :filter-option="false"
+              :dropdown-style="{ background: '#2c2c2e' }"
+            />
+          </div>
+
+          <!-- Timeout -->
+          <div class="config-item">
+            <span class="config-label">{{ t('settings.llm.timeout') }}</span>
+            <a-input-number
+              :value="appState.llmTimeout"
+              @update:value="appState.setLlmTimeout"
+              size="small"
+              :min="1"
+              :max="120"
+              class="config-number"
+            />
+          </div>
+
+          <!-- Temperature -->
+          <div class="config-item">
+            <span class="config-label">{{ t('settings.llm.temperature') }}</span>
+            <a-slider
+              :value="appState.llmTemperature"
+              @update:value="appState.setLlmTemperature"
+              :min="0"
+              :max="1"
+              :step="0.1"
+              class="config-slider"
+            />
+            <span class="slider-value">{{ appState.llmTemperature }}</span>
+          </div>
+        </div>
+
+        <!-- ASR 设置 -->
+        <div v-show="activeTab === 'asr'" class="tab-pane">
+          <!-- 当前模型目录 -->
+          <div class="config-item">
+            <span class="config-label">{{ t('settings.asr.modelPath') }}</span>
+            <a-input
+              :value="appState.asrModelPath"
+              @update:value="appState.setAsrModelPath"
+              size="small"
+              class="config-input"
+            />
+          </div>
+
+          <!-- 本地模型列表 -->
+          <div class="model-section">
+            <div class="section-title">{{ t('settings.asr.localModels') }}</div>
+            <div class="model-list" v-if="localModels.length > 0">
+              <div
+                v-for="model in localModels"
+                :key="model.path"
+                class="model-item"
+                :class="{ active: model.path === appState.asrModelPath }"
+                @click="selectModel(model.path)"
+              >
+                <span class="model-name">{{ model.name }}</span>
+                <span class="model-size">{{ model.size }}</span>
+              </div>
+            </div>
+            <div v-else class="no-models">{{ t('settings.asr.noLocalModels') }}</div>
+          </div>
+
+          <!-- 可下载模型 -->
+          <div class="model-section">
+            <div class="section-title">{{ t('settings.asr.availableModels') }}</div>
+            <div class="model-list">
+              <div v-for="model in availableModels" :key="model.id" class="model-item downloadable">
+                <div class="model-info">
+                  <span class="model-name">{{ model.name }}</span>
+                  <span class="model-desc">{{ model.description }}</span>
+                </div>
+                <a-button
+                  v-if="!model.downloaded"
+                  size="small"
+                  :loading="downloadingModels.has(model.id)"
+                  @click.stop="downloadModel(model.id)"
+                >
+                  {{ downloadingModels.has(model.id) ? t('settings.asr.downloading') : t('settings.asr.download') }}
+                </a-button>
+                <span v-else class="downloaded-badge">✓</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -157,27 +419,29 @@ const onLocaleChange = (value: 'zh' | 'en') => {
 
 <style scoped>
 .settings-panel {
-  background: rgba(45, 45, 48, 0.85);
+  background: rgba(45, 45, 48, 0.95);
   backdrop-filter: blur(25px);
   -webkit-backdrop-filter: blur(25px);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-  padding: 12px;
   position: absolute;
   top: calc(100% + 8px);
-  /* 与操作面板对齐：悬浮球宽度56px - 操作面板margin-left 20px = 36px */
-  left: 36px;
+  left: 24px;
   z-index: 100;
+  width: 420px;
+  height: 340px;
+  display: flex;
+  flex-direction: column;
 }
 
 .panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
-  padding-bottom: 8px;
+  padding: 12px 16px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
 }
 
 .panel-title {
@@ -210,34 +474,171 @@ const onLocaleChange = (value: 'zh' | 'en') => {
   height: 14px;
 }
 
-.panel-content {
+.panel-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.tabs-nav {
+  width: 90px;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 8px;
+  flex-shrink: 0;
+}
+
+.tab-item {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 11px;
+  transition: all 0.2s ease;
+  margin-bottom: 4px;
+}
+
+.tab-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.tab-item.active {
+  background: rgba(74, 144, 226, 0.2);
+  color: #4A90E2;
+}
+
+.tab-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.tab-content {
+  flex: 1;
+  padding: 12px 16px;
+  overflow-y: auto;
+}
+
+.tab-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .config-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 6px 0;
-}
-
-.config-icon {
-  width: 16px;
-  height: 16px;
-  color: rgba(255, 255, 255, 0.5);
-  flex-shrink: 0;
+  gap: 12px;
 }
 
 .config-label {
   color: rgba(255, 255, 255, 0.8);
   font-size: 13px;
-  flex: 1;
+  min-width: 80px;
+  flex-shrink: 0;
 }
 
 .config-select {
-  width: 90px;
+  width: 140px;
+}
+
+.config-input {
+  flex: 1;
+  max-width: 200px;
+}
+
+.config-number {
+  width: 80px;
+}
+
+.config-slider {
+  flex: 1;
+  max-width: 120px;
+}
+
+.slider-value {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+  min-width: 30px;
+  text-align: right;
+}
+
+.model-section {
+  margin-top: 8px;
+}
+
+.section-title {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.model-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.model-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.model-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.model-item.active {
+  background: rgba(74, 144, 226, 0.2);
+  border: 1px solid rgba(74, 144, 226, 0.3);
+}
+
+.model-item.downloadable {
+  cursor: default;
+}
+
+.model-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.model-name {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 12px;
+}
+
+.model-size {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 11px;
+}
+
+.model-desc {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 11px;
+}
+
+.downloaded-badge {
+  color: #52c41a;
+  font-size: 14px;
+}
+
+.no-models {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 12px;
+  padding: 12px;
+  text-align: center;
 }
 
 /* Ant Design 深色主题覆盖 */
@@ -270,5 +671,68 @@ const onLocaleChange = (value: 'zh' | 'en') => {
 
 :deep(.ant-switch-checked) {
   background: #4A90E2 !important;
+}
+
+:deep(.ant-input) {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 6px !important;
+  color: rgba(255, 255, 255, 0.8) !important;
+  font-size: 12px !important;
+}
+
+:deep(.ant-input::placeholder) {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
+:deep(.ant-input-password) {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 6px !important;
+}
+
+:deep(.ant-input-password input) {
+  background: transparent !important;
+  color: rgba(255, 255, 255, 0.8) !important;
+  font-size: 12px !important;
+}
+
+:deep(.ant-input-password input::placeholder) {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
+:deep(.ant-input-password .ant-input-suffix) {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+:deep(.ant-input-password .ant-input-suffix:hover) {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+:deep(.ant-input-number) {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 6px !important;
+}
+
+:deep(.ant-input-number-input) {
+  color: rgba(255, 255, 255, 0.8) !important;
+  font-size: 12px !important;
+}
+
+:deep(.ant-slider-rail) {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+:deep(.ant-slider-track) {
+  background: #4A90E2 !important;
+}
+
+:deep(.ant-slider-handle) {
+  border-color: #4A90E2 !important;
+}
+
+:deep(.ant-btn) {
+  font-size: 11px !important;
 }
 </style>
