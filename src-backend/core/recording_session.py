@@ -87,6 +87,10 @@ class RecordingSession:
             asr_language=asr_language
         )
 
+    def update_llm_config(self, config: dict) -> None:
+        """Update LLM configuration dynamically."""
+        self._pipeline.update_llm_config(config)
+
     @property
     def is_running(self) -> bool:
         return self._is_running

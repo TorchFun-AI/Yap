@@ -195,3 +195,11 @@ class AudioPipeline:
         self._pre_buffer.clear()
         self._speech_just_started = False
         self.vad.reset()
+
+    def update_llm_config(self, config: dict) -> None:
+        """Update LLM configuration dynamically."""
+        if self.llm:
+            self.llm.reconfigure(**config)
+        if self.translator:
+            self.translator.reconfigure(**config)
+        logger.info(f"LLM config updated: {config}")
