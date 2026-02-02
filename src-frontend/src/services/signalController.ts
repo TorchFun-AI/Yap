@@ -128,6 +128,21 @@ export class SignalController {
     }))
   }
 
+  updateLlmConfig(config: {
+    api_key?: string
+    api_base?: string
+    model?: string
+    timeout?: number
+    temperature?: number
+  }): void {
+    if (this.ws?.readyState !== WebSocket.OPEN) return
+    this.ws.send(JSON.stringify({
+      type: WsMessageType.CONTROL,
+      action: 'update_llm_config',
+      config,
+    }))
+  }
+
   disconnect(): void {
     this.manualDisconnect = true
     if (this.retryTimer) {
