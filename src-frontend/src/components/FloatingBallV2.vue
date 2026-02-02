@@ -33,6 +33,7 @@ const hoveredAction = ref<string | null>(null)
 
 const iconColor = computed(() => BallIconColorMap[appState.status] || BallIconColorMap[AppStatus.IDLE])
 const isActive = computed(() => appState.isActive)
+const waveformLevels = computed(() => appState.waveformLevels)
 
 // 录音按钮是否禁用（仅在初始化中或未连接时禁用，说话/转写等状态可以停止）
 const isRecordDisabled = computed(() =>
@@ -202,23 +203,17 @@ const iconPaths: Record<string, string> = {
       @mousedown="onBallMouseDown"
       @mousemove="onBallMouseMove"
     >
-      <!-- Idle: Sparkles 图标 -->
-      <svg
-        v-if="!isActive"
-        class="ball-icon"
-        :style="{ color: iconColor }"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="1.5"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      >
-        <path d="M12 3L13.5 8.5L19 10L13.5 11.5L12 17L10.5 11.5L5 10L10.5 8.5L12 3Z" />
-        <path d="M19 16L20 18.5L22.5 19.5L20 20.5L19 23L18 20.5L15.5 19.5L18 18.5L19 16Z" />
-      </svg>
+      <!-- Active: 声波可视化 -->
+      <div v-if="isActive" class="waveform-container" :style="{ color: iconColor }">
+        <div
+          v-for="(level, index) in waveformLevels"
+          :key="index"
+          class="waveform-bar"
+          :style="{ height: `${Math.max(4, level * 20)}px` }"
+        />
+      </div>
 
-      <!-- Active: 麦克风图标 -->
+      <!-- Idle: Sparkles 图标 -->
       <svg
         v-else
         class="ball-icon"
@@ -230,10 +225,8 @@ const iconPaths: Record<string, string> = {
         stroke-linecap="round"
         stroke-linejoin="round"
       >
-        <rect x="9" y="2" width="6" height="12" rx="3" />
-        <path d="M5 10v1a7 7 0 0 0 14 0v-1" />
-        <line x1="12" y1="18" x2="12" y2="22" />
-        <line x1="8" y1="22" x2="16" y2="22" />
+        <path d="M12 3L13.5 8.5L19 10L13.5 11.5L12 17L10.5 11.5L5 10L10.5 8.5L12 3Z" />
+        <path d="M19 16L20 18.5L22.5 19.5L20 20.5L19 23L18 20.5L15.5 19.5L18 18.5L19 16Z" />
       </svg>
 
       <!-- 呼吸灯效果 -->
@@ -334,6 +327,24 @@ const iconPaths: Record<string, string> = {
   width: 24px;
   height: 24px;
   transition: color 0.3s ease;
+}
+
+/* 声波可视化 */
+.waveform-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 24px;
+}
+
+.waveform-bar {
+  width: 3px;
+  min-height: 4px;
+  max-height: 20px;
+  background: currentColor;
+  border-radius: 1.5px;
+  transition: height 0.05s ease-out;
 }
 
 /* 呼吸灯效果 */

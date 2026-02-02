@@ -34,6 +34,9 @@ export const useAppState = defineStore('appState', () => {
   const originalTranscript = ref('')
   const errorMessage = ref('')
 
+  // 波形数据 (5 个归一化值 0-1)
+  const waveformLevels = ref<number[]>([0, 0, 0, 0, 0])
+
   // 录音配置（从 localStorage 加载）
   const savedSettings = loadSettings()
   const asrLanguage = ref(savedSettings.asrLanguage)
@@ -65,6 +68,14 @@ export const useAppState = defineStore('appState', () => {
   function setError(message: string) {
     errorMessage.value = message
     status.value = 'error'
+  }
+
+  function setWaveformLevels(levels: number[]) {
+    waveformLevels.value = levels
+  }
+
+  function resetWaveformLevels() {
+    waveformLevels.value = [0, 0, 0, 0, 0]
   }
 
   function setAsrLanguage(lang: string) {
@@ -101,6 +112,7 @@ export const useAppState = defineStore('appState', () => {
     currentTranscript.value = ''
     originalTranscript.value = ''
     errorMessage.value = ''
+    waveformLevels.value = [0, 0, 0, 0, 0]
   }
 
   return {
@@ -115,10 +127,13 @@ export const useAppState = defineStore('appState', () => {
     asrLanguage,
     targetLanguage,
     correctionEnabled,
+    waveformLevels,
     setStatus,
     setConnectionStatus,
     setTranscript,
     setError,
+    setWaveformLevels,
+    resetWaveformLevels,
     setAsrLanguage,
     setTargetLanguage,
     setCorrectionEnabled,

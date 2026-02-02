@@ -1,5 +1,6 @@
 // WebSocket 默认配置
 export const WS_DEFAULT_URL = 'ws://127.0.0.1:8765/ws/audio'
+export const WS_WAVEFORM_URL = 'ws://127.0.0.1:8765/ws/waveform'
 
 // WebSocket 重连配置
 export const WS_MAX_RETRIES = 10

@@ -12,6 +12,7 @@ import uvicorn
 
 from core.recording_session import RecordingSession
 from core.audio_capture import AudioCapture
+from core.waveform_analyzer import register_waveform_callback, unregister_waveform_callback
 
 # Configure logging
 logging.basicConfig(
@@ -103,6 +104,41 @@ async def audio_websocket(websocket: WebSocket):
         print("Client disconnected")
         if session and session.is_running:
             session.stop()
+
+
+@app.websocket("/ws/waveform")
+async def waveform_websocket(websocket: WebSocket):
+    """WebSocket endpoint for real-time waveform visualization data."""
+    await websocket.accept()
+    import asyncio
+
+    loop = asyncio.get_event_loop()
+    queue: asyncio.Queue = asyncio.Queue()
+
+    def on_waveform(levels: list):
+        """Callback for waveform data (called from audio thread)."""
+        try:
+            loop.call_soon_threadsafe(queue.put_nowait, levels)
+        except RuntimeError:
+            pass
+
+    # Register callback
+    register_waveform_callback(on_waveform)
+
+    try:
+        while True:
+            # Wait for waveform data
+            levels = await queue.get()
+            # Send to client
+            await websocket.send_json({
+                "type": "waveform",
+                "levels": levels
+            })
+    except WebSocketDisconnect:
+        print("Waveform client disconnected")
+    finally:
+        # Unregister callback
+        unregister_waveform_callback(on_waveform)
 
 
 def main():

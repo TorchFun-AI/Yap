@@ -8,6 +8,7 @@ import threading
 from typing import Callable, Optional
 from .audio_capture import AudioCapture
 from .pipeline import AudioPipeline
+from .waveform_analyzer import get_analyzer, broadcast_waveform
 
 
 class RecordingSession:
@@ -53,6 +54,11 @@ class RecordingSession:
         """Process audio chunk from capture."""
         if not self._is_running:
             return
+        # Analyze waveform and broadcast to connected clients
+        analyzer = get_analyzer()
+        levels = analyzer.analyze(audio_bytes)
+        broadcast_waveform(levels)
+        # Process through ASR pipeline
         result = self._pipeline.process_chunk(audio_bytes)
         self._send_result(result)
 

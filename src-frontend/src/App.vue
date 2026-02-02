@@ -6,9 +6,11 @@ import FloatingBallV2 from './components/FloatingBallV2.vue'
 import SettingsPanel from './components/SettingsPanel.vue'
 import { useAppState } from '@/stores/appState'
 import { signalController } from '@/services/signalController'
+import { waveformController } from '@/services/waveformController'
 import { AppStatus } from '@/constants'
 import {
   WS_DEFAULT_URL,
+  WS_WAVEFORM_URL,
   ConnectionStatus,
   WsMessageType,
   BackendStatus,
@@ -247,11 +249,20 @@ onMounted(async () => {
 
   const wsUrl = import.meta.env.VITE_WS_URL || WS_DEFAULT_URL
   signalController.connect(wsUrl)
+
+  // 初始化波形 WebSocket 连接
+  const waveformUrl = import.meta.env.VITE_WS_WAVEFORM_URL || WS_WAVEFORM_URL
+  waveformController.onData((levels) => {
+    appState.setWaveformLevels(levels)
+  })
+  waveformController.connect(waveformUrl)
 })
 
 onUnmounted(() => {
   stopPolling()
   signalController.disconnect()
+  waveformController.disconnect()
+  appState.resetWaveformLevels()
 })
 </script>
 
