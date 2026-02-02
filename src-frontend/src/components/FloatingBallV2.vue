@@ -234,7 +234,7 @@ const iconPaths: Record<string, string> = {
         <path d="M16.24 7.76l2.83-2.83" />
       </svg>
 
-      <!-- Transcribing: 文字识别图标 (带动画) -->
+      <!-- Transcribing: 文档/文字图标 (带动画) -->
       <svg
         v-else-if="isTranscribing"
         class="ball-icon status-icon-pulse"
@@ -246,9 +246,10 @@ const iconPaths: Record<string, string> = {
         stroke-linecap="round"
         stroke-linejoin="round"
       >
-        <path d="M4 7V4h16v3" />
-        <path d="M9 20h6" />
-        <path d="M12 4v16" />
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <polyline points="14 2 14 8 20 8" />
+        <line x1="8" y1="13" x2="16" y2="13" />
+        <line x1="8" y1="17" x2="12" y2="17" />
       </svg>
 
       <!-- Correcting: 校正/编辑图标 (带动画) -->
