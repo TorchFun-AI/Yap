@@ -6,6 +6,31 @@ export default {
     correction: 'Text Correction',
     translate: 'Translation',
     uiLanguage: 'UI Language',
+    tabs: {
+      general: 'General',
+      llm: 'LLM',
+      asr: 'ASR',
+    },
+    // LLM Settings
+    llm: {
+      provider: 'Provider',
+      apiKey: 'API Key',
+      apiKeyPlaceholder: 'Leave empty for default',
+      apiBase: 'API Base',
+      model: 'Model',
+      timeout: 'Timeout (s)',
+      temperature: 'Temperature',
+    },
+    // ASR Settings
+    asr: {
+      modelPath: 'Model Path',
+      browse: 'Browse',
+      localModels: 'Local Models',
+      availableModels: 'Available Models',
+      download: 'Download',
+      downloading: 'Downloading...',
+      noLocalModels: 'No local models',
+    },
   },
 
   // Floating Ball Actions
