@@ -99,6 +99,12 @@ export class SignalController {
     correctionEnabled?: boolean
     targetLanguage?: string
     asrModelPath?: string
+    // LLM 配置
+    llmApiKey?: string
+    llmApiBase?: string
+    llmModel?: string
+    llmTimeout?: number
+    llmTemperature?: number
   } = {}): void {
     if (this.ws?.readyState !== WebSocket.OPEN) return
     this.ws.send(JSON.stringify({

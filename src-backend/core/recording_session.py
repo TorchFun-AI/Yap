@@ -33,7 +33,23 @@ class RecordingSession:
         # Notify starting status before model loading
         self._on_result({"type": "status", "status": "starting"})
 
-        # Initialize pipeline (loads ASR model) on start
+        # Apply LLM config BEFORE initialize (so LLM client uses correct config)
+        if config:
+            llm_config = {}
+            if config.get("llmApiKey"):
+                llm_config["api_key"] = config["llmApiKey"]
+            if config.get("llmApiBase"):
+                llm_config["api_base"] = config["llmApiBase"]
+            if config.get("llmModel"):
+                llm_config["model"] = config["llmModel"]
+            if config.get("llmTimeout"):
+                llm_config["timeout"] = config["llmTimeout"]
+            if config.get("llmTemperature") is not None:
+                llm_config["temperature"] = config["llmTemperature"]
+            if llm_config:
+                self._pipeline.update_llm_config(llm_config)
+
+        # Initialize pipeline (loads ASR model and LLM client)
         self._pipeline.initialize()
 
         # Apply runtime config
