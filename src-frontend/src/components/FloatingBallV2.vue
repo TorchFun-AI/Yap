@@ -61,7 +61,6 @@ const defaultActions = computed<ActionItem[]>(() => [
       { value: 'auto', label: t('asrLanguages.auto') },
       { value: 'zh', label: t('asrLanguages.zh') },
       { value: 'en', label: t('asrLanguages.en') },
-      { value: 'ja', label: t('asrLanguages.ja') },
     ]
   },
   {
@@ -72,7 +71,6 @@ const defaultActions = computed<ActionItem[]>(() => [
       { value: '', label: t('translateLanguages.none') },
       { value: '中文', label: t('translateLanguages.zh') },
       { value: 'English', label: t('translateLanguages.en') },
-      { value: '日本語', label: t('translateLanguages.ja') },
     ]
   },
   {
@@ -152,7 +150,8 @@ const onActionClick = (action: ActionItem) => {
     appState.setCorrectionEnabled(!appState.correctionEnabled)
     emit('action', action.id, appState.correctionEnabled ? 'on' : 'off')
   } else if (action.id === 'settings') {
-    // 设置面板
+    // 设置面板，关闭所有下拉菜单
+    activeDropdown.value = null
     emit('action', 'settings')
   }
 }
@@ -464,7 +463,7 @@ const iconPaths: Record<string, string> = {
   top: calc(100% + 8px);
   left: 50%;
   transform: translateX(-50%);
-  min-width: 100px;
+  min-width: 120px;
   padding: 4px 0;
   background: rgba(30, 30, 30, 0.95);
   backdrop-filter: blur(20px);
