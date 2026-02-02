@@ -17,6 +17,7 @@ dependencies = [
     "httpx>=0.26.0",
     "socksio>=1.0.0",
     "pyautogui>=0.9.54",
+    "huggingface_hub>=0.20.0",
 ]
 
 [[tool.uv.index]]
