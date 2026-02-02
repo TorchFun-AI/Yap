@@ -14,11 +14,13 @@ interface ActionItem {
 
 const props = defineProps<{
   actions?: ActionItem[]
+  settingsOpen?: boolean
 }>()
 
 const emit = defineEmits<{
   click: []
   action: [id: string, value?: string]
+  drag: []
 }>()
 
 const appState = useAppState()
@@ -75,6 +77,11 @@ const defaultActions: ActionItem[] = [
     icon: 'edit',
     label: '文本校正',
   },
+  {
+    id: 'settings',
+    icon: 'settings',
+    label: '设置',
+  },
 ]
 
 const actionItems = computed(() => props.actions || defaultActions)
@@ -106,6 +113,8 @@ const onBallMouseMove = async (e: MouseEvent) => {
       activeDropdown.value = null
       hoveredAction.value = null
     }
+    // 通知父组件关闭设置面板
+    emit('drag')
     const appWindow = getCurrentWindow()
     await appWindow.startDragging()
   }
@@ -126,6 +135,9 @@ const onBallClick = () => {
 }
 
 const onActionClick = (action: ActionItem) => {
+  // 设置面板打开时，只允许点击设置按钮
+  if (props.settingsOpen && action.id !== 'settings') return
+
   if (action.options) {
     activeDropdown.value = activeDropdown.value === action.id ? null : action.id
   } else if (action.id === 'record') {
@@ -136,6 +148,9 @@ const onActionClick = (action: ActionItem) => {
     // 文本校正开关
     appState.setCorrectionEnabled(!appState.correctionEnabled)
     emit('action', action.id, appState.correctionEnabled ? 'on' : 'off')
+  } else if (action.id === 'settings') {
+    // 设置面板
+    emit('action', 'settings')
   }
 }
 
@@ -167,6 +182,7 @@ const iconPaths: Record<string, string> = {
   edit: 'M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z',
   mic: 'M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20c0 .55.45 1 1 1s1-.45 1-1v-2.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z',
   sparkles: 'M12 3L13.5 8.5L19 10L13.5 11.5L12 17L10.5 11.5L5 10L10.5 8.5L12 3ZM19 16L20 18.5L22.5 19.5L20 20.5L19 23L18 20.5L15.5 19.5L18 18.5L19 16Z',
+  settings: 'M19.14 12.94c.04-.31.06-.63.06-.94 0-.31-.02-.63-.06-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z',
 }
 </script>
 
@@ -236,8 +252,8 @@ const iconPaths: Record<string, string> = {
         >
           <div class="action-icon" :class="{
             active: activeDropdown === action.id,
-            toggled: (action.id === 'correction' && selectedValues.correction) || (action.id === 'record' && isActive),
-            disabled: action.id === 'record' && isRecordDisabled
+            toggled: (action.id === 'correction' && selectedValues.correction) || (action.id === 'record' && isActive) || (action.id === 'settings' && props.settingsOpen),
+            disabled: (action.id === 'record' && isRecordDisabled) || (action.id !== 'settings' && props.settingsOpen)
           }">
             <svg viewBox="0 0 24 24" fill="currentColor">
               <path :d="iconPaths[action.icon] || iconPaths.sparkles" />
