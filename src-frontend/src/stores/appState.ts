@@ -6,6 +6,26 @@ import { RECORDING_DEFAULT_LANGUAGE } from '@/constants'
 
 export type AppStatus = 'idle' | 'starting' | 'listening' | 'transcribing' | 'correcting' | 'translating' | 'speaking' | 'error'
 
+// localStorage keys
+const STORAGE_KEYS = {
+  asrLanguage: 'app-asr-language',
+  targetLanguage: 'app-target-language',
+  correctionEnabled: 'app-correction-enabled',
+}
+
+// 从 localStorage 读取设置
+function loadSettings() {
+  const savedAsrLang = localStorage.getItem(STORAGE_KEYS.asrLanguage)
+  const savedTargetLang = localStorage.getItem(STORAGE_KEYS.targetLanguage)
+  const savedCorrection = localStorage.getItem(STORAGE_KEYS.correctionEnabled)
+
+  return {
+    asrLanguage: savedAsrLang || RECORDING_DEFAULT_LANGUAGE,
+    targetLanguage: savedTargetLang || '',
+    correctionEnabled: savedCorrection !== null ? savedCorrection === 'true' : true,
+  }
+}
+
 export const useAppState = defineStore('appState', () => {
   const status = ref<AppStatus>('idle')
   const connectionStatus = ref<ConnectionStatus>('disconnected')
@@ -14,10 +34,11 @@ export const useAppState = defineStore('appState', () => {
   const originalTranscript = ref('')
   const errorMessage = ref('')
 
-  // 录音配置
-  const asrLanguage = ref(RECORDING_DEFAULT_LANGUAGE)
-  const targetLanguage = ref('')
-  const correctionEnabled = ref(true)
+  // 录音配置（从 localStorage 加载）
+  const savedSettings = loadSettings()
+  const asrLanguage = ref(savedSettings.asrLanguage)
+  const targetLanguage = ref(savedSettings.targetLanguage)
+  const correctionEnabled = ref(savedSettings.correctionEnabled)
 
   const isConnected = computed(() => connectionStatus.value === 'connected')
 
@@ -48,16 +69,19 @@ export const useAppState = defineStore('appState', () => {
 
   function setAsrLanguage(lang: string) {
     asrLanguage.value = lang
+    localStorage.setItem(STORAGE_KEYS.asrLanguage, lang)
     syncConfigToBackend()
   }
 
   function setTargetLanguage(lang: string) {
     targetLanguage.value = lang
+    localStorage.setItem(STORAGE_KEYS.targetLanguage, lang)
     syncConfigToBackend()
   }
 
   function setCorrectionEnabled(enabled: boolean) {
     correctionEnabled.value = enabled
+    localStorage.setItem(STORAGE_KEYS.correctionEnabled, String(enabled))
     syncConfigToBackend()
   }
 
