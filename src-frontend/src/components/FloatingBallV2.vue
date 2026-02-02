@@ -34,7 +34,15 @@ const hoveredAction = ref<string | null>(null)
 const iconColor = computed(() => BallIconColorMap[appState.status] || BallIconColorMap[AppStatus.IDLE])
 const isActive = computed(() => appState.isActive)
 const isStarting = computed(() => appState.status === AppStatus.STARTING)
+const isTranscribing = computed(() => appState.status === AppStatus.TRANSCRIBING)
+const isCorrecting = computed(() => appState.status === AppStatus.CORRECTING)
+const isTranslating = computed(() => appState.status === AppStatus.TRANSLATING)
 const waveformLevels = computed(() => appState.waveformLevels)
+
+// 是否显示声波（仅在 listening/speaking 状态）
+const showWaveform = computed(() =>
+  isActive.value && !isStarting.value && !isTranscribing.value && !isCorrecting.value && !isTranslating.value
+)
 
 // 录音按钮是否禁用（仅在初始化中或未连接时禁用，说话/转写等状态可以停止）
 const isRecordDisabled = computed(() =>
@@ -226,8 +234,61 @@ const iconPaths: Record<string, string> = {
         <path d="M16.24 7.76l2.83-2.83" />
       </svg>
 
-      <!-- Active (非 Starting): 声波可视化 -->
-      <div v-else-if="isActive" class="waveform-container" :style="{ color: iconColor }">
+      <!-- Transcribing: 文字识别图标 (带动画) -->
+      <svg
+        v-else-if="isTranscribing"
+        class="ball-icon status-icon-pulse"
+        :style="{ color: iconColor }"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M4 7V4h16v3" />
+        <path d="M9 20h6" />
+        <path d="M12 4v16" />
+      </svg>
+
+      <!-- Correcting: 校正/编辑图标 (带动画) -->
+      <svg
+        v-else-if="isCorrecting"
+        class="ball-icon status-icon-pulse"
+        :style="{ color: iconColor }"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M12 20h9" />
+        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+      </svg>
+
+      <!-- Translating: 翻译图标 (带动画) -->
+      <svg
+        v-else-if="isTranslating"
+        class="ball-icon status-icon-pulse"
+        :style="{ color: iconColor }"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M5 8l6 6" />
+        <path d="M4 14l6-6 2-3" />
+        <path d="M2 5h12" />
+        <path d="M7 2h1" />
+        <path d="M22 22l-5-10-5 10" />
+        <path d="M14 18h6" />
+      </svg>
+
+      <!-- Listening/Speaking: 声波可视化 -->
+      <div v-else-if="showWaveform" class="waveform-container" :style="{ color: iconColor }">
         <div
           v-for="(level, index) in waveformLevels"
           :key="index"
@@ -363,6 +424,22 @@ const iconPaths: Record<string, string> = {
   }
   to {
     transform: rotate(360deg);
+  }
+}
+
+/* 状态图标脉冲动画 */
+.ball-icon.status-icon-pulse {
+  animation: iconPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes iconPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(0.95);
   }
 }
 
