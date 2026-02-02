@@ -2,25 +2,28 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { getCurrentWindow, availableMonitors } from '@tauri-apps/api/window'
 import { invoke } from '@tauri-apps/api/core'
-import FloatingBall from './components/FloatingBall.vue'
 import FloatingBallV2 from './components/FloatingBallV2.vue'
-import StatusPanel from './components/StatusPanel.vue'
+import SettingsPanel from './components/SettingsPanel.vue'
 import { useAppState } from '@/stores/appState'
 import { signalController } from '@/services/signalController'
 import { AppStatus } from '@/constants'
 import {
-  WINDOW_PANEL_WIDTH,
-  WINDOW_PANEL_HEIGHT,
+  WS_DEFAULT_URL,
+  ConnectionStatus,
+  WsMessageType,
+  BackendStatus,
   WINDOW_BALL_SIZE,
-  WINDOW_GAP,
   WINDOW_SHADOW,
   DEFAULT_WINDOW_POSITION,
 } from '@/constants'
 
 const appState = useAppState()
-const showPanel = ref(false)
-const isAnimating = ref(false)
+const showSettings = ref(false)
 const floatingBallRef = ref<InstanceType<typeof FloatingBallV2> | null>(null)
+
+// 设置面板尺寸
+const SETTINGS_PANEL_WIDTH = 220
+const SETTINGS_PANEL_HEIGHT = 180
 
 // 球区域的边界（相对于窗口，悬浮球在左上角）
 const ballOnlyBounds = {
@@ -34,7 +37,7 @@ const ballOnlyBounds = {
 const expandedBounds = {
   left: WINDOW_SHADOW,
   top: WINDOW_SHADOW,
-  right: WINDOW_BALL_SIZE + 160 + WINDOW_SHADOW,
+  right: WINDOW_BALL_SIZE + 200 + WINDOW_SHADOW,
   bottom: WINDOW_BALL_SIZE + WINDOW_SHADOW,
 }
 
@@ -42,15 +45,23 @@ const expandedBounds = {
 const expandedWithDropdownBounds = {
   left: WINDOW_SHADOW,
   top: WINDOW_SHADOW,
-  right: WINDOW_BALL_SIZE + 160 + WINDOW_SHADOW,
+  right: WINDOW_BALL_SIZE + 200 + WINDOW_SHADOW,
   bottom: WINDOW_BALL_SIZE + WINDOW_SHADOW + 110,
+}
+
+// 设置面板展开时的边界
+const settingsPanelBounds = {
+  left: WINDOW_SHADOW,
+  top: WINDOW_SHADOW,
+  right: Math.max(WINDOW_BALL_SIZE + 200, SETTINGS_PANEL_WIDTH) + WINDOW_SHADOW,
+  bottom: WINDOW_BALL_SIZE + 8 + SETTINGS_PANEL_HEIGHT + WINDOW_SHADOW,
 }
 
 let pollTimer: number | null = null
 let lastIgnoreState = true
 
 // 保存窗口位置到 Tauri store
-const saveWindowPosition = async (x: number, y: number) => {
+const _saveWindowPosition = async (x: number, y: number) => {
   try {
     await invoke('save_window_position', { x, y })
   } catch (e) {
@@ -73,7 +84,7 @@ const clampToScreen = async (x: number, y: number, width: number, height: number
   try {
     const monitors = await availableMonitors()
     if (monitors.length > 0) {
-      const primary = monitors[0]
+      const primary = monitors[0]!
       const screenWidth = primary.size.width / primary.scaleFactor
       const screenHeight = primary.size.height / primary.scaleFactor
       if (x < 0 || x + width > screenWidth) {
@@ -91,8 +102,6 @@ const clampToScreen = async (x: number, y: number, width: number, height: number
 
 // 轮询检测鼠标位置
 const pollMousePosition = async () => {
-  if (showPanel.value) return
-
   try {
     const appWindow = getCurrentWindow()
     const pos = await appWindow.outerPosition()
@@ -112,9 +121,12 @@ const pollMousePosition = async () => {
     // 根据展开状态和下拉菜单状态选择检测区域
     const isExpanded = floatingBallRef.value?.isExpanded ?? false
     const hasDropdown = floatingBallRef.value?.hasDropdown ?? false
+    const isSettingsOpen = showSettings.value
 
     let bounds = ballOnlyBounds
-    if (isExpanded && hasDropdown) {
+    if (isSettingsOpen) {
+      bounds = settingsPanelBounds
+    } else if (isExpanded && hasDropdown) {
       bounds = expandedWithDropdownBounds
     } else if (isExpanded) {
       bounds = expandedBounds
@@ -131,6 +143,8 @@ const pollMousePosition = async () => {
     if (isInBounds && lastIgnoreState) {
       await invoke('set_ignore_cursor_events', { ignore: false })
       lastIgnoreState = false
+      // 进入窗口范围时自动获取焦点
+      await appWindow.setFocus()
     } else if (!isInBounds && !lastIgnoreState) {
       await invoke('set_ignore_cursor_events', { ignore: true })
       lastIgnoreState = true
@@ -168,9 +182,11 @@ const toggleRecording = () => {
 }
 
 // 处理操作区事件
-const handleAction = (id: string, value?: string) => {
+const handleAction = (id: string, _value?: string) => {
   if (id === 'record') {
     toggleRecording()
+  } else if (id === 'settings') {
+    showSettings.value = !showSettings.value
   }
 }
 
@@ -178,9 +194,9 @@ const handleAction = (id: string, value?: string) => {
 onMounted(async () => {
   const savedPosition = await loadWindowPosition()
 
-  // 固定窗口大小为展开状态
-  const totalHeight = WINDOW_PANEL_HEIGHT + WINDOW_GAP + WINDOW_BALL_SIZE + WINDOW_SHADOW * 2
-  const totalWidth = WINDOW_PANEL_WIDTH + WINDOW_SHADOW * 2
+  // 窗口大小：悬浮球 + 操作面板 + 设置面板
+  const totalWidth = Math.max(WINDOW_BALL_SIZE + 200, SETTINGS_PANEL_WIDTH) + WINDOW_SHADOW * 2
+  const totalHeight = WINDOW_BALL_SIZE + 8 + SETTINGS_PANEL_HEIGHT + WINDOW_SHADOW * 2
 
   const { x, y } = await clampToScreen(savedPosition.x, savedPosition.y, totalWidth, totalHeight)
   await invoke('set_window_bounds', { x, y, width: totalWidth, height: totalHeight })
@@ -191,61 +207,60 @@ onMounted(async () => {
 
   // 启动轮询
   startPolling()
+
+  // 初始化 WebSocket 连接
+  signalController.onConnectionStatusChange((status, retry) => {
+    appState.setConnectionStatus(status, retry)
+    if (status === ConnectionStatus.CONNECTED) {
+      appState.setStatus(AppStatus.IDLE)
+    }
+  })
+
+  signalController.onMessage((data: any) => {
+    if (data.type === WsMessageType.TRANSCRIPTION || data.type === WsMessageType.CORRECTION) {
+      appState.setTranscript(data.text, data.original_text)
+    } else if (data.type === WsMessageType.VAD) {
+      if (data.is_speech) {
+        appState.setStatus(AppStatus.SPEAKING)
+      }
+    } else if (data.type === WsMessageType.STATUS) {
+      if (data.status === BackendStatus.STARTING) {
+        appState.setStatus(AppStatus.STARTING)
+      } else if (data.status === BackendStatus.RECORDING) {
+        appState.setStatus(AppStatus.LISTENING)
+      } else if (data.status === BackendStatus.STOPPED) {
+        appState.setStatus(AppStatus.IDLE)
+      } else if (data.status === BackendStatus.TRANSCRIBING) {
+        appState.setStatus(AppStatus.TRANSCRIBING)
+      } else if (data.status === BackendStatus.CORRECTING) {
+        appState.setStatus(AppStatus.CORRECTING)
+      } else if (data.status === BackendStatus.TRANSLATING) {
+        appState.setStatus(AppStatus.TRANSLATING)
+      } else if (data.status === BackendStatus.SPEAKING) {
+        appState.setStatus(AppStatus.SPEAKING)
+      }
+    } else if (data.type === WsMessageType.ERROR) {
+      appState.setError(data.message)
+    }
+  })
+
+  const wsUrl = import.meta.env.VITE_WS_URL || WS_DEFAULT_URL
+  signalController.connect(wsUrl)
 })
 
 onUnmounted(() => {
   stopPolling()
+  signalController.disconnect()
 })
-
-const togglePanel = async () => {
-  if (isAnimating.value) return
-  isAnimating.value = true
-
-  if (!showPanel.value) {
-    // 展开面板
-    stopPolling()
-    await invoke('set_ignore_cursor_events', { ignore: false })
-    lastIgnoreState = false
-    showPanel.value = true
-
-    // 保存位置
-    const appWindow = getCurrentWindow()
-    const pos = await appWindow.outerPosition()
-    const scale = await appWindow.scaleFactor()
-    await saveWindowPosition(pos.x / scale, pos.y / scale)
-
-    setTimeout(() => {
-      isAnimating.value = false
-    }, 350)
-  } else {
-    // 收起面板
-    showPanel.value = false
-
-    setTimeout(async () => {
-      await invoke('set_ignore_cursor_events', { ignore: true })
-      lastIgnoreState = true
-      startPolling()
-
-      // 保存位置
-      const appWindow = getCurrentWindow()
-      const pos = await appWindow.outerPosition()
-      const scale = await appWindow.scaleFactor()
-      await saveWindowPosition(pos.x / scale, pos.y / scale)
-
-      isAnimating.value = false
-    }, 300)
-  }
-}
 </script>
 
 <template>
   <div class="app-container">
     <div class="ball-wrapper">
-      <FloatingBallV2 ref="floatingBallRef" @action="handleAction" />
-    </div>
-    <div class="panel-area">
-      <transition name="panel-slide">
-        <StatusPanel v-show="showPanel" @close="togglePanel" />
+      <FloatingBallV2 ref="floatingBallRef" :settings-open="showSettings" @action="handleAction" @drag="showSettings = false" />
+      <!-- 设置面板 -->
+      <transition name="settings-slide">
+        <SettingsPanel v-if="showSettings" @close="showSettings = false" />
       </transition>
     </div>
   </div>
@@ -266,30 +281,23 @@ const togglePanel = async () => {
 .ball-wrapper {
   display: flex;
   justify-content: flex-start;
-  margin-bottom: 8px;
   flex-shrink: 0;
+  position: relative;
 }
 
-.panel-area {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
+/* 设置面板动画 */
+.settings-slide-enter-active {
+  animation: settingsSlideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* Panel slide transition - 从下往上展开 */
-.panel-slide-enter-active {
-  animation: panelSlideIn 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+.settings-slide-leave-active {
+  animation: settingsSlideOut 0.2s ease-out;
 }
 
-.panel-slide-leave-active {
-  animation: panelSlideOut 0.28s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@keyframes panelSlideIn {
+@keyframes settingsSlideIn {
   0% {
     opacity: 0;
-    transform: translateY(30px) scale(0.95);
+    transform: translateY(-8px) scale(0.95);
   }
   100% {
     opacity: 1;
@@ -297,14 +305,14 @@ const togglePanel = async () => {
   }
 }
 
-@keyframes panelSlideOut {
+@keyframes settingsSlideOut {
   0% {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
   100% {
     opacity: 0;
-    transform: translateY(30px) scale(0.95);
+    transform: translateY(-8px) scale(0.95);
   }
 }
 </style>
