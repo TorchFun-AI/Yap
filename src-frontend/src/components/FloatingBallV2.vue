@@ -253,7 +253,7 @@ const iconPaths: Record<string, string> = {
       <!-- Correcting: 校正/编辑图标 (带动画) -->
       <svg
         v-else-if="isCorrecting"
-        class="ball-icon status-icon-pulse"
+        class="ball-icon correcting-pen"
         :style="{ color: iconColor }"
         viewBox="0 0 24 24"
         fill="none"
@@ -262,7 +262,6 @@ const iconPaths: Record<string, string> = {
         stroke-linecap="round"
         stroke-linejoin="round"
       >
-        <path d="M12 20h9" />
         <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
       </svg>
 
@@ -442,6 +441,31 @@ const iconPaths: Record<string, string> = {
   50% {
     opacity: 0.7;
     transform: scale(0.95);
+  }
+}
+
+/* 校正图标书写动画 */
+.ball-icon.correcting-pen {
+  animation: penWriting 0.6s ease-in-out infinite;
+  transform-origin: center center;
+}
+
+@keyframes penWriting {
+  0%, 100% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  25% {
+    transform: translate(2px, -2px) rotate(-18deg);
+    opacity: 0.9;
+  }
+  50% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  75% {
+    transform: translate(2px, -2px) rotate(-18deg);
+    opacity: 0.9;
   }
 }
 
