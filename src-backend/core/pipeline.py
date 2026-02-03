@@ -134,6 +134,7 @@ class AudioPipeline:
                     "type": "transcription",
                     "text": transcription,
                     "is_final": False,  # Not final until all processing completes
+                    "audio_duration": round(audio_duration, 2),
                 }
 
                 current_text = transcription

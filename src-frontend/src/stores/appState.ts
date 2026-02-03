@@ -64,6 +64,7 @@ export interface MessageRecord {
   text: string
   original?: string
   timestamp: number
+  duration?: number  // 音频时长（秒）
 }
 
 export const useAppState = defineStore('appState', () => {
@@ -120,13 +121,14 @@ export const useAppState = defineStore('appState', () => {
   }
 
   // 添加最终结果到历史记录（只在收到 transcription 消息时调用）
-  function addToHistory(text: string, original?: string) {
+  function addToHistory(text: string, original?: string, duration?: number) {
     if (text) {
       messageHistory.value.unshift({
         id: ++messageIdCounter,
         text,
         original,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        duration
       })
       // 保留最近 10 条
       if (messageHistory.value.length > 10) {

@@ -13,6 +13,14 @@ const appState = useAppState()
 const recentMessages = computed(() =>
   appState.messageHistory.slice(0, props.maxCount || 3)
 )
+
+// 格式化时长显示
+function formatDuration(seconds?: number): string {
+  if (seconds === undefined || seconds === null) return ''
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.floor(seconds % 60)
+  return `${mins}:${secs.toString().padStart(2, '0')}`
+}
 </script>
 
 <template>
@@ -23,7 +31,10 @@ const recentMessages = computed(() =>
         :key="msg.id"
         class="message-item"
       >
-        <span class="message-text">{{ msg.text }}</span>
+        <div class="message-header">
+          <span class="message-text">{{ msg.text }}</span>
+          <span v-if="msg.duration" class="message-duration">{{ formatDuration(msg.duration) }}</span>
+        </div>
         <span
           v-if="msg.original && msg.original !== msg.text"
           class="message-original"
@@ -62,12 +73,29 @@ const recentMessages = computed(() =>
   border-bottom: none;
 }
 
+.message-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
 .message-text {
   display: block;
   font-size: 12px;
   color: rgba(255, 255, 255, 0.9);
   word-wrap: break-word;
   white-space: pre-wrap;
+}
+
+.message-duration {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 2px 6px;
+  border-radius: 4px;
 }
 
 .message-original {

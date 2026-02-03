@@ -294,7 +294,7 @@ onMounted(async () => {
     if (data.type === WsMessageType.TRANSCRIPTION) {
       // 识别完成：添加到历史记录（text 和 original 都是原始文本）
       appState.setTranscript(data.text)
-      appState.addToHistory(data.text, data.text)
+      appState.addToHistory(data.text, data.text, data.audio_duration)
     } else if (data.type === WsMessageType.CORRECTION) {
       // 校正完成：只更新 text，保留 original
       appState.setTranscript(data.text, data.original_text)
