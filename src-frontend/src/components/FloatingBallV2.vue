@@ -329,7 +329,7 @@ const iconPaths: Record<string, string> = {
         >
           <div class="action-icon" :class="{
             active: activeDropdown === action.id,
-            toggled: (action.id === 'correction' && selectedValues.correction) || (action.id === 'record' && isActive),
+            toggled: (action.id === 'correction' && selectedValues.correction) || (action.id === 'record' && isActive) || (action.id === 'translate' && selectedValues.translate !== ''),
             disabled: action.id === 'record' && isRecordDisabled
           }">
             <svg viewBox="0 0 24 24" fill="currentColor">
