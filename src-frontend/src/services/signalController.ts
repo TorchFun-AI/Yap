@@ -98,7 +98,7 @@ export class SignalController {
     language?: string
     correctionEnabled?: boolean
     targetLanguage?: string
-    asrModelPath?: string
+    asrModelId?: string
     // LLM 配置
     llmApiKey?: string
     llmApiBase?: string
@@ -126,7 +126,9 @@ export class SignalController {
     language?: string
     correctionEnabled?: boolean
     targetLanguage?: string
-    asrModelPath?: string
+    asrModelId?: string
+    contextEnabled?: boolean
+    contextCount?: number
   }): void {
     if (this.ws?.readyState !== WebSocket.OPEN) return
     this.ws.send(JSON.stringify({

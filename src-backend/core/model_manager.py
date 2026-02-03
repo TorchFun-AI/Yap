@@ -2,6 +2,7 @@
 ASR Model Manager
 Manages ASR model downloads from Hugging Face mlx-community.
 Only supports MLX format models for Apple Silicon optimization.
+Uses HuggingFace default cache path (~/.cache/huggingface/hub/).
 """
 
 import os
@@ -11,6 +12,9 @@ from typing import List, Dict, Optional
 import threading
 
 logger = logging.getLogger(__name__)
+
+# HuggingFace 默认缓存目录
+HF_CACHE_DIR = Path.home() / ".cache" / "huggingface" / "hub"
 
 # 预定义的 MLX 格式 ASR 模型列表 (来自 mlx-community)
 MLX_ASR_MODELS = [
@@ -36,72 +40,71 @@ MLX_ASR_MODELS = [
 
 
 class ModelManager:
-    """ASR 模型管理器 (仅支持 MLX 格式)"""
+    """ASR 模型管理器 (仅支持 MLX 格式，使用 HuggingFace 缓存)"""
 
-    def __init__(self, models_dir: str = None):
-        default_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "models")
-        self.models_dir = models_dir or os.getenv("ASR_MODELS_DIR", default_dir)
+    def __init__(self):
         self._download_progress = {}
         self._download_lock = threading.Lock()
         self._download_tasks = {}
 
     def list_local_models(self) -> List[Dict]:
-        """列出本地已下载的模型"""
+        """列出本地已缓存的模型（扫描 HuggingFace 缓存目录）"""
         models = []
-        models_path = Path(self.models_dir)
-        if not models_path.exists():
+        if not HF_CACHE_DIR.exists():
             return models
 
-        for item in models_path.iterdir():
-            if item.is_dir() and (item / "config.json").exists():
-                models.append({
-                    "name": item.name,
-                    "path": str(item),
-                    "size": self._get_dir_size(item),
-                })
+        # 遍历预定义模型，检查是否已缓存
+        for model_info in MLX_ASR_MODELS:
+            model_id = model_info["id"]
+            # HuggingFace 缓存目录格式: models--org--name
+            cache_name = "models--" + model_id.replace("/", "--")
+            cache_path = HF_CACHE_DIR / cache_name
+
+            if cache_path.exists() and cache_path.is_dir():
+                # 检查是否有 snapshots 目录（表示模型已下载）
+                snapshots_dir = cache_path / "snapshots"
+                if snapshots_dir.exists() and any(snapshots_dir.iterdir()):
+                    models.append({
+                        "id": model_id,
+                        "name": model_info["name"],
+                        "size": self._get_dir_size(cache_path),
+                    })
         return models
 
     def list_available_models(self) -> List[Dict]:
         """列出可下载的 MLX 格式模型"""
-        local_models = {m["name"] for m in self.list_local_models()}
+        local_model_ids = {m["id"] for m in self.list_local_models()}
         result = []
         for model in MLX_ASR_MODELS:
-            model_name = model["id"].split("/")[-1]
             result.append({
                 **model,
-                "downloaded": model_name in local_models,
+                "downloaded": model["id"] in local_model_ids,
             })
         return result
 
     def download_model(self, model_id: str, on_progress=None) -> Dict:
-        """从 Hugging Face 下载 MLX 格式模型 (使用 hf-mirror 镜像加速)"""
+        """从 Hugging Face 下载 MLX 格式模型到默认缓存目录"""
         try:
             from huggingface_hub import snapshot_download
 
             # 设置 hf-mirror 镜像
             os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 
-            # 模型保存目录：models/模型名
-            model_name = model_id.split("/")[-1]
-            local_dir = os.path.join(self.models_dir, model_name)
-
-            logger.info(f"Downloading model {model_id} to {local_dir} (via hf-mirror)")
+            logger.info(f"Downloading model {model_id} to HuggingFace cache (via hf-mirror)")
 
             with self._download_lock:
                 self._download_progress[model_id] = {"status": "downloading", "progress": 0}
 
-            # 下载模型
-            path = snapshot_download(
+            # 下载模型到默认缓存目录
+            snapshot_download(
                 repo_id=model_id,
-                local_dir=local_dir,
-                local_dir_use_symlinks=False,
                 endpoint="https://hf-mirror.com",
             )
 
             with self._download_lock:
                 self._download_progress[model_id] = {"status": "completed", "progress": 100}
 
-            return {"success": True, "path": path}
+            return {"success": True, "model_id": model_id}
         except Exception as e:
             logger.error(f"Model download failed: {e}")
             with self._download_lock:

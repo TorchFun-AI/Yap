@@ -218,8 +218,8 @@ function saveOpenSettingsShortcut() {
 
 // ASR 模型管理
 interface LocalModel {
+  id: string
   name: string
-  path: string
   size: string
 }
 
@@ -241,6 +241,7 @@ async function fetchLocalModels() {
   try {
     const res = await fetch(`${API_BASE}/api/models/local`)
     const data = await res.json()
+    console.log('fetchLocalModels response:', data)
     localModels.value = data.models || []
   } catch (e) {
     console.error('Failed to fetch local models:', e)
@@ -289,8 +290,11 @@ async function downloadModel(modelId: string) {
   }
 }
 
-function selectModel(path: string) {
-  appState.setAsrModelPath(path)
+function selectModel(modelId: string) {
+  console.log('selectModel called with:', modelId)
+  console.log('current asrModelId:', appState.asrModelId)
+  appState.setAsrModelId(modelId)
+  console.log('after set asrModelId:', appState.asrModelId)
 }
 
 onMounted(() => {
@@ -591,12 +595,12 @@ onMounted(() => {
 
         <!-- ASR 设置 -->
         <div v-show="activeTab === 'asr'" class="tab-pane">
-          <!-- 当前模型目录 -->
+          <!-- 当前模型 ID -->
           <div class="config-item">
             <span class="config-label">{{ t('settings.asr.modelPath') }}</span>
             <a-input
-              :value="appState.asrModelPath"
-              @update:value="appState.setAsrModelPath"
+              :value="appState.asrModelId"
+              @update:value="appState.setAsrModelId"
               size="small"
               class="config-input"
             />
@@ -608,10 +612,10 @@ onMounted(() => {
             <div class="model-list" v-if="localModels.length > 0">
               <div
                 v-for="model in localModels"
-                :key="model.path"
+                :key="model.id"
                 class="model-item"
-                :class="{ active: model.path === appState.asrModelPath }"
-                @click="selectModel(model.path)"
+                :class="{ active: model.id === appState.asrModelId }"
+                @click="selectModel(model.id)"
               >
                 <span class="model-name">{{ model.name }}</span>
                 <span class="model-size">{{ model.size }}</span>
@@ -872,6 +876,7 @@ onMounted(() => {
   justify-content: space-between;
   padding: 8px 10px;
   background: rgba(255, 255, 255, 0.05);
+  border: 1px solid transparent;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s ease;

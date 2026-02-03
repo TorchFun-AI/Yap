@@ -44,15 +44,15 @@ class AudioPipeline:
         # History store for context
         self.history_store = HistoryStore()
 
-    def set_config(self, correction_enabled: bool = True, target_language: str = None, asr_language: str = None, asr_model_path: str = None, context_enabled: bool = True, context_count: int = 3):
+    def set_config(self, correction_enabled: bool = True, target_language: str = None, asr_language: str = None, asr_model_id: str = None, context_enabled: bool = True, context_count: int = 3):
         """Set runtime configuration for correction and translation."""
         self._correction_enabled = correction_enabled
         self._target_language = target_language if target_language else None
         self._asr_language = asr_language if asr_language else None
         self._context_enabled = context_enabled
         self._context_count = context_count
-        if asr_model_path:
-            self.asr.set_model_path(asr_model_path)
+        if asr_model_id:
+            self.asr.set_model_id(asr_model_id)
         logger.info(f"Pipeline config: asr_language={asr_language}, correction={correction_enabled}, target_language={target_language}, context_enabled={context_enabled}, context_count={context_count}")
 
     def _emit_status(self, status: str, **kwargs):

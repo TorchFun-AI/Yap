@@ -5,7 +5,8 @@ Uses MLX Audio FunASR for speech-to-text transcription on Apple Silicon.
 
 import os
 import logging
-from typing import Optional, Generator, Callable
+from pathlib import Path
+from typing import Optional, Callable
 from concurrent.futures import ThreadPoolExecutor
 import asyncio
 
@@ -13,13 +14,36 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
+# 默认模型 ID
+DEFAULT_MODEL_ID = "mlx-community/Fun-ASR-MLT-Nano-2512-4bit"
 
-def _detect_model_type(model_path: str) -> str:
-    """根据模型路径检测模型类型"""
-    if not model_path:
+# HuggingFace 缓存目录
+HF_CACHE_DIR = Path.home() / ".cache" / "huggingface" / "hub"
+
+
+def _get_local_model_path(model_id: str) -> Optional[str]:
+    """获取本地缓存的模型路径，如果不存在返回 None"""
+    cache_name = "models--" + model_id.replace("/", "--")
+    cache_path = HF_CACHE_DIR / cache_name / "snapshots"
+
+    if not cache_path.exists():
+        return None
+
+    # 获取最新的 snapshot
+    snapshots = list(cache_path.iterdir())
+    if not snapshots:
+        return None
+
+    # 返回第一个 snapshot 的路径
+    return str(snapshots[0])
+
+
+def _detect_model_type(model_id: str) -> str:
+    """根据模型 ID 检测模型类型"""
+    if not model_id:
         return "funasr"
-    path_lower = model_path.lower()
-    if "whisper" in path_lower:
+    id_lower = model_id.lower()
+    if "whisper" in id_lower:
         return "whisper"
     return "funasr"
 
@@ -27,9 +51,8 @@ def _detect_model_type(model_path: str) -> str:
 class ASREngine:
     """Automatic Speech Recognition engine using MLX Audio FunASR."""
 
-    def __init__(self, model_path: str = None):
-        default_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "models", "Fun-ASR-MLT-Nano-2512-4bit")
-        self.model_path = os.getenv("ASR_MODEL_PATH", model_path or default_path)
+    def __init__(self, model_id: str = None):
+        self.model_id = os.getenv("ASR_MODEL_ID", model_id or DEFAULT_MODEL_ID)
         self.default_language = os.getenv("ASR_DEFAULT_LANGUAGE", "zh")
         self.model = None
         self.model_type = None
@@ -42,15 +65,23 @@ class ASREngine:
             return
 
         try:
-            self.model_type = _detect_model_type(self.model_path)
-            logger.info(f"Loading {self.model_type} model: {self.model_path}")
+            # 设置 hf-mirror 镜像加速下载（如果需要下载）
+            os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
+
+            self.model_type = _detect_model_type(self.model_id)
+
+            # 优先使用本地缓存路径
+            local_path = _get_local_model_path(self.model_id)
+            model_path = local_path or self.model_id
+
+            logger.info(f"Loading {self.model_type} model: {model_path}")
 
             if self.model_type == "whisper":
                 from mlx_audio.stt.models.whisper import Model
-                self.model = Model.from_pretrained(self.model_path)
+                self.model = Model.from_pretrained(model_path)
             else:
                 from mlx_audio.stt.models.funasr import Model
-                self.model = Model.from_pretrained(self.model_path, fix_mistral_regex=True)
+                self.model = Model.from_pretrained(model_path, fix_mistral_regex=True)
 
             self.is_initialized = True
             logger.info(f"{self.model_type} model loaded successfully")
@@ -121,11 +152,12 @@ class ASREngine:
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(self.executor, self.transcribe, audio_float32, language)
 
-    def set_model_path(self, model_path: str) -> None:
-        """设置模型路径（需要重新初始化）"""
-        if model_path != self.model_path:
-            self.model_path = model_path
+    def set_model_id(self, model_id: str) -> None:
+        """设置模型 ID（需要重新初始化）"""
+        logger.info(f"set_model_id called with: {model_id}, current: {self.model_id}")
+        if model_id != self.model_id:
+            self.model_id = model_id
             self.model_type = None
             self.is_initialized = False
             self.model = None
-            logger.info(f"ASR model path changed to: {model_path}")
+            logger.info(f"ASR model ID changed to: {model_id}")

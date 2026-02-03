@@ -230,7 +230,7 @@ const toggleRecording = () => {
       language: appState.asrLanguage,
       correctionEnabled: appState.correctionEnabled,
       targetLanguage: appState.targetLanguage || undefined,
-      asrModelPath: appState.asrModelPath || undefined,
+      asrModelId: appState.asrModelId || undefined,
       // LLM 配置
       llmApiKey: appState.llmApiKey || undefined,
       llmApiBase: appState.llmApiBase || undefined,

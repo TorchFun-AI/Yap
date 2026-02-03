@@ -28,7 +28,7 @@ const STORAGE_KEYS = {
   llmTimeout: 'app-llm-timeout',
   llmTemperature: 'app-llm-temperature',
   // ASR 配置
-  asrModelPath: 'app-asr-model-path',
+  asrModelId: 'app-asr-model-id',
   // 快捷键配置
   openSettingsShortcut: 'app-open-settings-shortcut',
 }
@@ -65,7 +65,7 @@ function loadSettings() {
   const savedLlmTemperature = localStorage.getItem(STORAGE_KEYS.llmTemperature)
 
   // ASR 配置
-  const savedAsrModelPath = localStorage.getItem(STORAGE_KEYS.asrModelPath)
+  const savedAsrModelId = localStorage.getItem(STORAGE_KEYS.asrModelId)
 
   // 快捷键配置
   const savedOpenSettingsShortcut = localStorage.getItem(STORAGE_KEYS.openSettingsShortcut)
@@ -85,7 +85,7 @@ function loadSettings() {
     llmTimeout: savedLlmTimeout ? parseInt(savedLlmTimeout) : 10,
     llmTemperature: savedLlmTemperature ? parseFloat(savedLlmTemperature) : 0.3,
     // ASR 配置
-    asrModelPath: savedAsrModelPath || '',
+    asrModelId: savedAsrModelId || '',
     // 快捷键配置
     openSettingsShortcut: savedOpenSettingsShortcut
       ? JSON.parse(savedOpenSettingsShortcut)
@@ -137,7 +137,7 @@ export const useAppState = defineStore('appState', () => {
   const llmTemperature = ref(savedSettings.llmTemperature)
 
   // ASR 配置
-  const asrModelPath = ref(savedSettings.asrModelPath)
+  const asrModelId = ref(savedSettings.asrModelId)
 
   // 快捷键配置
   const openSettingsShortcut = ref<ShortcutConfig>(savedSettings.openSettingsShortcut)
@@ -294,9 +294,9 @@ export const useAppState = defineStore('appState', () => {
   }
 
   // ASR 配置 setter
-  function setAsrModelPath(path: string) {
-    asrModelPath.value = path
-    localStorage.setItem(STORAGE_KEYS.asrModelPath, path)
+  function setAsrModelId(id: string) {
+    asrModelId.value = id
+    localStorage.setItem(STORAGE_KEYS.asrModelId, id)
     syncConfigToBackend()
     notifySettingsChanged()
   }
@@ -328,7 +328,7 @@ export const useAppState = defineStore('appState', () => {
         language: asrLanguage.value,
         correctionEnabled: correctionEnabled.value,
         targetLanguage: targetLanguage.value || undefined,
-        asrModelPath: asrModelPath.value || undefined,
+        asrModelId: asrModelId.value || undefined,
         contextEnabled: contextEnabled.value,
         contextCount: contextCount.value,
       })
@@ -363,7 +363,7 @@ export const useAppState = defineStore('appState', () => {
     if (settings.llmModel !== undefined) llmModel.value = settings.llmModel
     if (settings.llmTimeout !== undefined) llmTimeout.value = settings.llmTimeout
     if (settings.llmTemperature !== undefined) llmTemperature.value = settings.llmTemperature
-    if (settings.asrModelPath !== undefined) asrModelPath.value = settings.asrModelPath
+    if (settings.asrModelId !== undefined) asrModelId.value = settings.asrModelId
     if (settings.openSettingsShortcut !== undefined) openSettingsShortcut.value = settings.openSettingsShortcut
   }
 
@@ -394,7 +394,7 @@ export const useAppState = defineStore('appState', () => {
     llmTimeout,
     llmTemperature,
     // ASR 配置
-    asrModelPath,
+    asrModelId,
     // 快捷键配置
     openSettingsShortcut,
     // 方法
@@ -421,7 +421,7 @@ export const useAppState = defineStore('appState', () => {
     setLlmTimeout,
     setLlmTemperature,
     // ASR 配置方法
-    setAsrModelPath,
+    setAsrModelId,
     // 快捷键配置方法
     setOpenSettingsShortcut,
     syncLlmConfigToBackend,

@@ -49,9 +49,9 @@ class RecordingSession:
             if llm_config:
                 self._pipeline.update_llm_config(llm_config)
 
-        # Apply ASR model path BEFORE initialize (so correct model type is loaded)
-        if config and config.get("asrModelPath"):
-            self._pipeline.asr.set_model_path(config["asrModelPath"])
+        # Apply ASR model ID BEFORE initialize (so correct model type is loaded)
+        if config and config.get("asrModelId"):
+            self._pipeline.asr.set_model_id(config["asrModelId"])
 
         # Initialize pipeline (loads ASR model and LLM client)
         self._pipeline.initialize()
@@ -61,14 +61,14 @@ class RecordingSession:
             asr_language = config.get("language", "auto")
             correction_enabled = config.get("correctionEnabled", True)
             target_language = config.get("targetLanguage", None)
-            asr_model_path = config.get("asrModelPath", None)
+            asr_model_id = config.get("asrModelId", None)
             context_enabled = config.get("contextEnabled", True)
             context_count = config.get("contextCount", 3)
             self._pipeline.set_config(
                 correction_enabled=correction_enabled,
                 target_language=target_language,
                 asr_language=asr_language,
-                asr_model_path=asr_model_path,
+                asr_model_id=asr_model_id,
                 context_enabled=context_enabled,
                 context_count=context_count
             )
@@ -107,14 +107,14 @@ class RecordingSession:
         asr_language = config.get("language")
         correction_enabled = config.get("correctionEnabled")
         target_language = config.get("targetLanguage")
-        asr_model_path = config.get("asrModelPath")
+        asr_model_id = config.get("asrModelId")
         context_enabled = config.get("contextEnabled", True)
         context_count = config.get("contextCount", 3)
         self._pipeline.set_config(
             correction_enabled=correction_enabled,
             target_language=target_language,
             asr_language=asr_language,
-            asr_model_path=asr_model_path,
+            asr_model_id=asr_model_id,
             context_enabled=context_enabled,
             context_count=context_count
         )
