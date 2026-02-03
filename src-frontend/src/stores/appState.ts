@@ -108,6 +108,7 @@ export const useAppState = defineStore('appState', () => {
   const retryCount = ref(0)
   const currentTranscript = ref('')
   const originalTranscript = ref('')
+  const partialTranscript = ref('')
   const errorMessage = ref('')
 
   // 消息历史（最多保留 10 条）
@@ -161,6 +162,12 @@ export const useAppState = defineStore('appState', () => {
     if (original) {
       originalTranscript.value = original
     }
+    // 收到最终结果时清除 partial
+    partialTranscript.value = ''
+  }
+
+  function setPartialTranscript(text: string) {
+    partialTranscript.value = text
   }
 
   // 添加最终结果到历史记录（只在收到 transcription 消息时调用）
@@ -332,6 +339,7 @@ export const useAppState = defineStore('appState', () => {
     status.value = 'idle'
     currentTranscript.value = ''
     originalTranscript.value = ''
+    partialTranscript.value = ''
     errorMessage.value = ''
     waveformLevels.value = [0, 0, 0, 0, 0]
   }
@@ -366,6 +374,7 @@ export const useAppState = defineStore('appState', () => {
     isConnected,
     currentTranscript,
     originalTranscript,
+    partialTranscript,
     errorMessage,
     isActive,
     asrLanguage,
@@ -392,6 +401,7 @@ export const useAppState = defineStore('appState', () => {
     setStatus,
     setConnectionStatus,
     setTranscript,
+    setPartialTranscript,
     addToHistory,
     updateLatestHistory,
     setError,

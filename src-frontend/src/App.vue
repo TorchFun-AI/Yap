@@ -343,7 +343,10 @@ onMounted(async () => {
   })
 
   signalController.onMessage((data: any) => {
-    if (data.type === WsMessageType.TRANSCRIPTION) {
+    if (data.type === WsMessageType.TRANSCRIPTION_PARTIAL) {
+      // 流式转录：实时更新部分结果
+      appState.setPartialTranscript(data.text)
+    } else if (data.type === WsMessageType.TRANSCRIPTION) {
       // 识别完成：添加到历史记录（text 和 original 都是原始文本）
       appState.setTranscript(data.text)
       appState.addToHistory(data.text, data.text, data.audio_duration)

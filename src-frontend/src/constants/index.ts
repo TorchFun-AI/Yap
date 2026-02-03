@@ -68,6 +68,7 @@ export const AppStatus = {
 // WebSocket 消息类型
 export const WsMessageType = {
   TRANSCRIPTION: 'transcription',
+  TRANSCRIPTION_PARTIAL: 'transcription_partial',
   CORRECTION: 'correction',
   VAD: 'vad',
   STATUS: 'status',

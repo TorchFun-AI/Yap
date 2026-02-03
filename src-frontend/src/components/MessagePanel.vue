@@ -14,6 +14,11 @@ const recentMessages = computed(() =>
   appState.messageHistory.slice(0, props.maxCount || 3)
 )
 
+// 是否正在转录（显示 partial）
+const isTranscribing = computed(() =>
+  appState.status === 'transcribing' && appState.partialTranscript
+)
+
 // 格式化时长显示
 function formatDuration(seconds?: number): string {
   if (seconds === undefined || seconds === null) return ''
@@ -36,7 +41,12 @@ async function copyToClipboard(id: number, text: string) {
 
 <template>
   <transition name="messages-slide">
-    <div v-show="visible && recentMessages.length > 0" class="messages-panel">
+    <div v-show="visible && (recentMessages.length > 0 || isTranscribing)" class="messages-panel">
+      <!-- 实时转录显示 -->
+      <div v-if="isTranscribing" class="message-item partial-item">
+        <span class="message-text partial-text">{{ appState.partialTranscript }}</span>
+      </div>
+      <!-- 历史消息 -->
       <div
         v-for="msg in recentMessages"
         :key="msg.id"
@@ -94,6 +104,19 @@ async function copyToClipboard(id: number, text: string) {
 
 .message-item:last-child {
   border-bottom: none;
+}
+
+/* 实时转录样式 */
+.partial-item {
+  background: rgba(41, 121, 255, 0.1);
+  border-radius: 6px;
+  margin: 0 -6px;
+  padding: 6px;
+}
+
+.partial-text {
+  color: rgba(41, 121, 255, 0.9);
+  font-style: italic;
 }
 
 .message-header {

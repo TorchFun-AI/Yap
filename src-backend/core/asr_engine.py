@@ -5,7 +5,7 @@ Uses MLX Audio FunASR for speech-to-text transcription on Apple Silicon.
 
 import os
 import logging
-from typing import Optional
+from typing import Optional, Generator, Callable
 from concurrent.futures import ThreadPoolExecutor
 import asyncio
 
@@ -70,6 +70,50 @@ class ASREngine:
             return text.strip() if text else None
         except Exception as e:
             logger.error(f"Transcription failed: {e}")
+            return None
+
+    def transcribe_stream(
+        self,
+        audio_float32: np.ndarray,
+        language: Optional[str] = None,
+        on_partial: Optional[Callable[[str], None]] = None
+    ) -> Optional[str]:
+        """
+        流式转录音频数据。
+
+        Args:
+            audio_float32: 音频数据
+            language: 语言代码
+            on_partial: 部分结果回调函数，每次有新文本时调用
+
+        Returns:
+            最终完整转录文本
+        """
+        if not self.is_initialized:
+            self.initialize()
+
+        # Whisper 模型不支持流式，回退到普通转录
+        if self.model_type == "whisper":
+            result = self.transcribe(audio_float32, language)
+            if result and on_partial:
+                on_partial(result)
+            return result
+
+        try:
+            lang = language or self.default_language
+            accumulated_text = ""
+
+            for chunk in self.model.generate(audio_float32, stream=True, language=lang):
+                # chunk 可能是字符串或对象
+                chunk_text = chunk if isinstance(chunk, str) else str(chunk)
+                accumulated_text += chunk_text
+
+                if on_partial and accumulated_text.strip():
+                    on_partial(accumulated_text.strip())
+
+            return accumulated_text.strip() if accumulated_text else None
+        except Exception as e:
+            logger.error(f"Streaming transcription failed: {e}")
             return None
 
     async def transcribe_async(self, audio_float32: np.ndarray, language: Optional[str] = None) -> Optional[str]:

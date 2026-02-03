@@ -60,6 +60,11 @@ class AudioPipeline:
         if self._on_status:
             self._on_status({"type": "status", "status": status, **kwargs})
 
+    def _emit_partial(self, text: str):
+        """Emit partial transcription result."""
+        if self._on_status:
+            self._on_status({"type": "transcription_partial", "text": text})
+
     def initialize(self) -> None:
         """Initialize all pipeline components."""
         if self.is_initialized:
@@ -128,12 +133,16 @@ class AudioPipeline:
             self._speech_just_started = False
             self.vad.reset()
 
-            # Step 1: ASR Transcription
+            # Step 1: ASR Transcription (streaming)
             self._emit_status("transcribing", audio_duration=audio_duration)
             t_asr_start = time.perf_counter()
             # Use configured language, 'auto' means let model detect
             asr_lang = None if self._asr_language == 'auto' else self._asr_language
-            transcription = self.asr.transcribe(audio_float32, language=asr_lang)
+            transcription = self.asr.transcribe_stream(
+                audio_float32,
+                language=asr_lang,
+                on_partial=self._emit_partial
+            )
             t_asr_end = time.perf_counter()
             logger.info(f"[TIMING] ASR completed in {(t_asr_end - t_asr_start)*1000:.0f}ms, text='{transcription}'")
 
