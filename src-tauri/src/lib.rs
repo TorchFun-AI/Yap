@@ -1,12 +1,14 @@
 // 允许使用 cocoa crate 的 deprecated API（迁移到 objc2 需要较大改动）
 #![allow(deprecated)]
 
+use std::sync::Mutex;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Emitter, Manager,
 };
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
+use tauri_plugin_shell::{process::CommandChild, ShellExt};
 use tauri_plugin_store::StoreExt;
 use serde::{Deserialize, Serialize};
 
@@ -23,6 +25,11 @@ const SHORTCUTS_KEY: &str = "shortcuts";
 const DEFAULT_X: f64 = 100.0;
 const DEFAULT_Y: f64 = 100.0;
 const SHORTCUT_TOGGLE_RECORDING: &str = "toggle_recording";
+
+/// Global state for managing the backend sidecar process
+struct SidecarState {
+    child: Mutex<Option<CommandChild>>,
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct WindowPosition {
@@ -295,8 +302,12 @@ fn update_shortcut(app: tauri::AppHandle, modifiers: Vec<String>, key: String) -
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .manage(SidecarState {
+            child: Mutex::new(None),
+        })
         .setup(|app| {
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let show = MenuItem::with_id(app, "show", "Show Window", true, None::<&str>)?;
@@ -341,6 +352,39 @@ pub fn run() {
                 }
             }
 
+            // Start backend sidecar
+            let sidecar_command = app.shell().sidecar("vocistant-backend")
+                .map_err(|e| format!("Failed to create sidecar command: {}", e))?;
+
+            let (mut rx, child) = sidecar_command.spawn()
+                .map_err(|e| format!("Failed to spawn sidecar: {}", e))?;
+
+            log::info!("Backend sidecar started with PID: {}", child.pid());
+
+            // Store the child process handle
+            let state = app.state::<SidecarState>();
+            *state.child.lock().unwrap() = Some(child);
+
+            // Spawn a task to handle sidecar output
+            tauri::async_runtime::spawn(async move {
+                use tauri_plugin_shell::process::CommandEvent;
+                while let Some(event) = rx.recv().await {
+                    match event {
+                        CommandEvent::Stdout(line) => {
+                            log::info!("[backend] {}", String::from_utf8_lossy(&line));
+                        }
+                        CommandEvent::Stderr(line) => {
+                            log::warn!("[backend] {}", String::from_utf8_lossy(&line));
+                        }
+                        CommandEvent::Terminated(payload) => {
+                            log::info!("[backend] Process terminated: {:?}", payload);
+                            break;
+                        }
+                        _ => {}
+                    }
+                }
+            });
+
             // 从 store 读取快捷键配置，如果没有则使用默认值 Alt+F5
             let store = app.store(STORE_PATH)?;
             let shortcuts_settings: ShortcutsSettings = store
@@ -365,6 +409,17 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![greet, save_window_position, load_window_position, set_window_bounds, set_ignore_cursor_events, get_cursor_position, open_settings_window, close_settings_window, broadcast_settings_changed, get_shortcut_settings, update_shortcut])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            if let tauri::RunEvent::Exit = event {
+                // Kill the backend sidecar process on exit
+                let state = app.state::<SidecarState>();
+                let child = state.child.lock().unwrap().take();
+                if let Some(child) = child {
+                    log::info!("Killing backend sidecar process...");
+                    let _ = child.kill();
+                }
+            }
+        });
 }

@@ -42,6 +42,12 @@ src-backend/models/*/.cache/
 # Tauri
 src-tauri/target/
 src-tauri/WixTools/
+src-tauri/binaries/
+
+# PyInstaller
+src-backend/build/
+src-backend/dist/
+*.spec.bak
 
 # Test coverage
 coverage/

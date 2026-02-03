@@ -194,10 +194,9 @@ async def waveform_websocket(websocket: WebSocket):
 def main():
     """Entry point for the backend server."""
     uvicorn.run(
-        "main:app",
+        app,
         host="127.0.0.1",
         port=8765,
-        reload=True,
     )
 
 
