@@ -49,6 +49,7 @@ const recentMessages = computed(() =>
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
   max-height: 120px;
   overflow-y: auto;
+  z-index: 15;  /* 在操作面板(20)之下，但下拉菜单(100)会在其之上 */
 }
 
 .message-item {

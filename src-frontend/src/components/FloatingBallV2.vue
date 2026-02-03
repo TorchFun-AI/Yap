@@ -388,7 +388,7 @@ const iconPaths: Record<string, string> = {
   align-items: center;
   justify-content: center;
   position: relative;
-  z-index: 10;
+  z-index: 25;  /* 确保主按钮在操作面板之上 */
   background: linear-gradient(180deg, #2C2C2E 0%, #1C1C1E 100%);
   border: 2px solid #4A90E2;
   box-shadow: 0 0 12px rgba(74, 144, 226, 0.5);
@@ -500,6 +500,7 @@ const iconPaths: Record<string, string> = {
   border-radius: 20px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
   gap: 8px;
+  z-index: 20;  /* 确保操作面板在消息面板之上 */
 }
 
 /* 操作项 */
