@@ -80,7 +80,10 @@ class LLMTranslator:
 3. 专有名词可以保留原文或使用通用译法。
 4. 不要添加任何解释或注释，只输出翻译结果。
 
-待翻译文本: {text}
+* 待翻译文本: 
+```
+{text}
+```
 
 必须注意：将翻译后的文本放在<translated>标签内返回，例如：<translated>翻译后的文本</translated>"""
 

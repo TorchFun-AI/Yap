@@ -102,7 +102,10 @@ class LLMCorrector:
 6. 保持原意不变，语气友好自然。
 7. 语言: {lang_name}
 
-待校正文本: {text}
+* 待校正文本: 
+```
+{text}
+```
 
 必须注意：将校正后的文本放在<corrected>标签内返回，例如：<corrected>校正后的文本</corrected>"""
 
