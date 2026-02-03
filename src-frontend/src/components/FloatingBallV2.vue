@@ -232,10 +232,10 @@ const iconPaths: Record<string, string> = {
         <path d="M16.24 7.76l2.83-2.83" />
       </svg>
 
-      <!-- Transcribing: 文档/文字图标 (带动画) -->
+      <!-- Transcribing: 语音气泡图标 (带跳动动画) -->
       <svg
         v-else-if="isTranscribing"
-        class="ball-icon status-icon-pulse"
+        class="ball-icon"
         :style="{ color: iconColor }"
         viewBox="0 0 24 24"
         fill="none"
@@ -244,10 +244,10 @@ const iconPaths: Record<string, string> = {
         stroke-linecap="round"
         stroke-linejoin="round"
       >
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-        <polyline points="14 2 14 8 20 8" />
-        <line x1="8" y1="13" x2="16" y2="13" />
-        <line x1="8" y1="17" x2="12" y2="17" />
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        <circle class="bubble-dot dot-1" cx="8" cy="10" r="1" fill="currentColor" stroke="none" />
+        <circle class="bubble-dot dot-2" cx="12" cy="10" r="1" fill="currentColor" stroke="none" />
+        <circle class="bubble-dot dot-3" cx="16" cy="10" r="1" fill="currentColor" stroke="none" />
       </svg>
 
       <!-- Correcting: 校正/编辑图标 (带动画) -->
@@ -441,6 +441,26 @@ const iconPaths: Record<string, string> = {
   50% {
     opacity: 0.7;
     transform: scale(0.95);
+  }
+}
+
+/* 语音气泡点跳动动画 */
+.bubble-dot {
+  animation: dotJump 1.2s ease-in-out infinite;
+}
+
+.dot-1 { animation-delay: 0s; }
+.dot-2 { animation-delay: 0.2s; }
+.dot-3 { animation-delay: 0.4s; }
+
+@keyframes dotJump {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-3px);
+    opacity: 1;
   }
 }
 
