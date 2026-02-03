@@ -23,6 +23,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   click: []
   action: [id: string, value?: string]
+  drag: []
 }>()
 
 const appState = useAppState()

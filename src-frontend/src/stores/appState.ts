@@ -164,12 +164,15 @@ export const useAppState = defineStore('appState', () => {
 
   // 更新最近一条历史记录的文本（校正完成时调用，保留 original）
   function updateLatestHistory(text: string) {
-    if (text && messageHistory.value.length > 0) {
+    const current = messageHistory.value[0]
+    if (text && current) {
       // 使用 splice 触发 Vue 响应式更新，只更新 text
       messageHistory.value.splice(0, 1, {
-        ...messageHistory.value[0],
+        id: current.id,
         text,
-        timestamp: Date.now()
+        original: current.original,
+        timestamp: Date.now(),
+        duration: current.duration
       })
     }
   }
