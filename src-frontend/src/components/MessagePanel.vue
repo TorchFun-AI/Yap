@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useAppState } from '@/stores/appState'
 
 const props = defineProps<{
@@ -21,6 +21,17 @@ function formatDuration(seconds?: number): string {
   const secs = Math.floor(seconds % 60)
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
+
+// 双击复制到剪贴板
+const copiedId = ref<number | null>(null)
+
+async function copyToClipboard(id: number, text: string) {
+  await navigator.clipboard.writeText(text)
+  copiedId.value = id
+  setTimeout(() => {
+    copiedId.value = null
+  }, 1500)
+}
 </script>
 
 <template>
@@ -30,6 +41,7 @@ function formatDuration(seconds?: number): string {
         v-for="msg in recentMessages"
         :key="msg.id"
         class="message-item"
+        @dblclick="copyToClipboard(msg.id, msg.text)"
       >
         <div class="message-header">
           <span class="message-text">{{ msg.text }}</span>
@@ -39,6 +51,9 @@ function formatDuration(seconds?: number): string {
           v-if="msg.original && msg.original !== msg.text"
           class="message-original"
         >{{ msg.original }}</span>
+        <transition name="fade">
+          <span v-if="copiedId === msg.id" class="copy-toast">消息已复制</span>
+        </transition>
       </div>
     </div>
   </transition>
@@ -67,6 +82,14 @@ function formatDuration(seconds?: number): string {
   padding: 6px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   line-height: 1.4;
+  cursor: pointer;
+}
+
+.message-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  margin: 0 -6px;
+  padding: 6px;
 }
 
 .message-item:last-child {
@@ -137,5 +160,23 @@ function formatDuration(seconds?: number): string {
     opacity: 0;
     transform: translateY(-8px);
   }
+}
+
+/* 复制提示 */
+.copy-toast {
+  display: block;
+  font-size: 10px;
+  color: rgba(120, 200, 120, 0.9);
+  margin-top: 4px;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>
