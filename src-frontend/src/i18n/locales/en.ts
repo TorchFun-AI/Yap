@@ -31,6 +31,13 @@ export default {
       downloading: 'Downloading...',
       noLocalModels: 'No local models',
     },
+    // Shortcut Settings
+    shortcut: {
+      title: 'Shortcuts',
+      toggleRecording: 'Toggle Recording',
+      save: 'Save',
+      invalid: 'Invalid shortcut',
+    },
   },
 
   // Floating Ball Actions

@@ -23,6 +23,7 @@ import { setLocale } from '@/i18n'
 const appState = useAppState()
 const floatingBallRef = ref<InstanceType<typeof FloatingBallV2> | null>(null)
 let unlistenSettingsChanged: UnlistenFn | null = null
+let unlistenToggleRecording: UnlistenFn | null = null
 
 // 球区域的边界（相对于窗口，悬浮球在左上角）
 const ballOnlyBounds = {
@@ -170,10 +171,14 @@ const stopPolling = () => {
 
 // 录音控制
 const toggleRecording = () => {
+  // 检查是否可以切换录音（与按钮禁用逻辑一致）
+  const isDisabled = appState.status === AppStatus.STARTING || !appState.isConnected
+  if (isDisabled) return
+
   if (appState.isActive) {
     signalController.stopRecording()
     appState.setStatus(AppStatus.IDLE)
-  } else if (appState.isConnected) {
+  } else {
     signalController.startRecording({
       language: appState.asrLanguage,
       correctionEnabled: appState.correctionEnabled,
@@ -205,6 +210,11 @@ const handleAction = async (id: string, _value?: string) => {
 
 // 初始化窗口 - 固定大小
 onMounted(async () => {
+  // 监听快捷键触发的录音切换事件
+  unlistenToggleRecording = await listen('toggle_recording', () => {
+    toggleRecording()
+  })
+
   // 监听设置变更事件（实时同步）
   unlistenSettingsChanged = await listen('settings-changed', () => {
     appState.reloadFromStorage()
@@ -326,6 +336,9 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  if (unlistenToggleRecording) {
+    unlistenToggleRecording()
+  }
   if (unlistenSettingsChanged) {
     unlistenSettingsChanged()
   }

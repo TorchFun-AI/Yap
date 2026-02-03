@@ -19,6 +19,7 @@ use objc::sel_impl;
 
 const STORE_PATH: &str = "settings.json";
 const WINDOW_POSITION_KEY: &str = "window_position";
+const SHORTCUTS_KEY: &str = "shortcuts";
 const DEFAULT_X: f64 = 100.0;
 const DEFAULT_Y: f64 = 100.0;
 const SHORTCUT_TOGGLE_RECORDING: &str = "toggle_recording";
@@ -27,6 +28,17 @@ const SHORTCUT_TOGGLE_RECORDING: &str = "toggle_recording";
 struct WindowPosition {
     x: f64,
     y: f64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct ShortcutConfig {
+    modifiers: Vec<String>,  // ["Alt"], ["Ctrl", "Shift"]
+    key: String,             // "F5", "A"
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+struct ShortcutsSettings {
+    toggle_recording: Option<ShortcutConfig>,
 }
 
 #[tauri::command]
@@ -176,6 +188,110 @@ fn broadcast_settings_changed(app: tauri::AppHandle) -> Result<(), String> {
     app.emit("settings-changed", ()).map_err(|e| e.to_string())
 }
 
+/// 解析修饰键字符串为 Modifiers
+fn parse_modifiers(modifiers: &[String]) -> Modifiers {
+    let mut result = Modifiers::empty();
+    for m in modifiers {
+        match m.to_uppercase().as_str() {
+            "ALT" | "OPTION" => result |= Modifiers::ALT,
+            "CTRL" | "CONTROL" => result |= Modifiers::CONTROL,
+            "SHIFT" => result |= Modifiers::SHIFT,
+            "META" | "SUPER" | "CMD" | "COMMAND" => result |= Modifiers::META,
+            _ => {}
+        }
+    }
+    result
+}
+
+/// 解析按键字符串为 Code
+fn parse_key(key: &str) -> Option<Code> {
+    match key.to_uppercase().as_str() {
+        "F1" => Some(Code::F1),
+        "F2" => Some(Code::F2),
+        "F3" => Some(Code::F3),
+        "F4" => Some(Code::F4),
+        "F5" => Some(Code::F5),
+        "F6" => Some(Code::F6),
+        "F7" => Some(Code::F7),
+        "F8" => Some(Code::F8),
+        "F9" => Some(Code::F9),
+        "F10" => Some(Code::F10),
+        "F11" => Some(Code::F11),
+        "F12" => Some(Code::F12),
+        "A" => Some(Code::KeyA),
+        "B" => Some(Code::KeyB),
+        "C" => Some(Code::KeyC),
+        "D" => Some(Code::KeyD),
+        "E" => Some(Code::KeyE),
+        "F" => Some(Code::KeyF),
+        "G" => Some(Code::KeyG),
+        "H" => Some(Code::KeyH),
+        "I" => Some(Code::KeyI),
+        "J" => Some(Code::KeyJ),
+        "K" => Some(Code::KeyK),
+        "L" => Some(Code::KeyL),
+        "M" => Some(Code::KeyM),
+        "N" => Some(Code::KeyN),
+        "O" => Some(Code::KeyO),
+        "P" => Some(Code::KeyP),
+        "Q" => Some(Code::KeyQ),
+        "R" => Some(Code::KeyR),
+        "S" => Some(Code::KeyS),
+        "T" => Some(Code::KeyT),
+        "U" => Some(Code::KeyU),
+        "V" => Some(Code::KeyV),
+        "W" => Some(Code::KeyW),
+        "X" => Some(Code::KeyX),
+        "Y" => Some(Code::KeyY),
+        "Z" => Some(Code::KeyZ),
+        _ => None,
+    }
+}
+
+/// 获取快捷键设置
+#[tauri::command]
+fn get_shortcut_settings(app: tauri::AppHandle) -> ShortcutsSettings {
+    let store = match app.store(STORE_PATH) {
+        Ok(s) => s,
+        Err(_) => return ShortcutsSettings::default(),
+    };
+
+    match store.get(SHORTCUTS_KEY) {
+        Some(value) => serde_json::from_value(value.clone()).unwrap_or_default(),
+        None => ShortcutsSettings::default(),
+    }
+}
+
+/// 更新快捷键
+#[tauri::command]
+fn update_shortcut(app: tauri::AppHandle, modifiers: Vec<String>, key: String) -> Result<(), String> {
+    // 解析新快捷键
+    let mods = parse_modifiers(&modifiers);
+    let code = parse_key(&key).ok_or("Invalid key")?;
+    let new_shortcut = Shortcut::new(Some(mods), code);
+
+    // 注销所有现有快捷键
+    let global_shortcut = app.global_shortcut();
+    global_shortcut.unregister_all().map_err(|e| e.to_string())?;
+
+    // 注册新快捷键
+    let app_handle = app.clone();
+    global_shortcut.on_shortcut(new_shortcut, move |_app, _shortcut, event| {
+        if event.state == ShortcutState::Pressed {
+            let _ = app_handle.emit(SHORTCUT_TOGGLE_RECORDING, ());
+        }
+    }).map_err(|e| e.to_string())?;
+
+    // 保存到 store
+    let store = app.store(STORE_PATH).map_err(|e| e.to_string())?;
+    let config = ShortcutConfig { modifiers, key };
+    let settings = ShortcutsSettings { toggle_recording: Some(config) };
+    store.set(SHORTCUTS_KEY, serde_json::to_value(settings).unwrap());
+    store.save().map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -225,8 +341,20 @@ pub fn run() {
                 }
             }
 
-            // 注册全局快捷键 Option+F5
-            let shortcut = Shortcut::new(Some(Modifiers::ALT), Code::F5);
+            // 从 store 读取快捷键配置，如果没有则使用默认值 Alt+F5
+            let store = app.store(STORE_PATH)?;
+            let shortcuts_settings: ShortcutsSettings = store
+                .get(SHORTCUTS_KEY)
+                .and_then(|v| serde_json::from_value(v.clone()).ok())
+                .unwrap_or_default();
+
+            let (mods, code) = if let Some(config) = shortcuts_settings.toggle_recording {
+                (parse_modifiers(&config.modifiers), parse_key(&config.key).unwrap_or(Code::F5))
+            } else {
+                (Modifiers::ALT, Code::F5)
+            };
+
+            let shortcut = Shortcut::new(Some(mods), code);
             let app_handle = app.handle().clone();
             app.global_shortcut().on_shortcut(shortcut, move |_app, _shortcut, event| {
                 if event.state == ShortcutState::Pressed {
@@ -236,7 +364,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![greet, save_window_position, load_window_position, set_window_bounds, set_ignore_cursor_events, get_cursor_position, open_settings_window, close_settings_window, broadcast_settings_changed])
+        .invoke_handler(tauri::generate_handler![greet, save_window_position, load_window_position, set_window_bounds, set_ignore_cursor_events, get_cursor_position, open_settings_window, close_settings_window, broadcast_settings_changed, get_shortcut_settings, update_shortcut])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

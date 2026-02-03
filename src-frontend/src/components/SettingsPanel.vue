@@ -63,6 +63,66 @@ const localeOptions = [
 // 当前界面语言
 const currentLocale = ref(getLocale())
 
+// 快捷键设置
+interface ShortcutConfig {
+  modifiers: string[]
+  key: string
+}
+
+const shortcutModifiers = ref<string[]>(['Alt'])
+const shortcutKey = ref('F5')
+const shortcutError = ref('')
+
+// 修饰键选项
+const modifierOptions = [
+  { value: 'Alt', label: 'Alt/Option' },
+  { value: 'Ctrl', label: 'Ctrl' },
+  { value: 'Shift', label: 'Shift' },
+  { value: 'Meta', label: 'Cmd/Win' },
+]
+
+// 按键选项
+const keyOptions = [
+  { value: 'F1', label: 'F1' },
+  { value: 'F2', label: 'F2' },
+  { value: 'F3', label: 'F3' },
+  { value: 'F4', label: 'F4' },
+  { value: 'F5', label: 'F5' },
+  { value: 'F6', label: 'F6' },
+  { value: 'F7', label: 'F7' },
+  { value: 'F8', label: 'F8' },
+  { value: 'F9', label: 'F9' },
+  { value: 'F10', label: 'F10' },
+  { value: 'F11', label: 'F11' },
+  { value: 'F12', label: 'F12' },
+  { value: 'A', label: 'A' },
+  { value: 'B', label: 'B' },
+  { value: 'C', label: 'C' },
+  { value: 'D', label: 'D' },
+  { value: 'E', label: 'E' },
+  { value: 'F', label: 'F' },
+  { value: 'G', label: 'G' },
+  { value: 'H', label: 'H' },
+  { value: 'I', label: 'I' },
+  { value: 'J', label: 'J' },
+  { value: 'K', label: 'K' },
+  { value: 'L', label: 'L' },
+  { value: 'M', label: 'M' },
+  { value: 'N', label: 'N' },
+  { value: 'O', label: 'O' },
+  { value: 'P', label: 'P' },
+  { value: 'Q', label: 'Q' },
+  { value: 'R', label: 'R' },
+  { value: 'S', label: 'S' },
+  { value: 'T', label: 'T' },
+  { value: 'U', label: 'U' },
+  { value: 'V', label: 'V' },
+  { value: 'W', label: 'W' },
+  { value: 'X', label: 'X' },
+  { value: 'Y', label: 'Y' },
+  { value: 'Z', label: 'Z' },
+]
+
 // LLM 模型选项（从 API 动态获取）
 const llmModelOptions = ref<{value: string}[]>([])
 const isLoadingModels = ref(false)
@@ -104,6 +164,37 @@ const onLocaleChange = (value: 'zh' | 'en') => {
   currentLocale.value = value
   setLocale(value)
   invoke('broadcast_settings_changed').catch(() => {})
+}
+
+// 加载快捷键设置
+async function loadShortcutSettings() {
+  try {
+    const settings = await invoke<{ toggle_recording?: ShortcutConfig }>('get_shortcut_settings')
+    if (settings.toggle_recording) {
+      shortcutModifiers.value = settings.toggle_recording.modifiers
+      shortcutKey.value = settings.toggle_recording.key
+    }
+  } catch (e) {
+    console.error('Failed to load shortcut settings:', e)
+  }
+}
+
+// 保存快捷键设置
+async function saveShortcut() {
+  shortcutError.value = ''
+  if (shortcutModifiers.value.length === 0) {
+    shortcutError.value = t('settings.shortcut.invalid')
+    return
+  }
+  try {
+    await invoke('update_shortcut', {
+      modifiers: shortcutModifiers.value,
+      key: shortcutKey.value,
+    })
+  } catch (e) {
+    shortcutError.value = t('settings.shortcut.invalid')
+    console.error('Failed to save shortcut:', e)
+  }
 }
 
 // ASR 模型管理
@@ -187,6 +278,7 @@ onMounted(() => {
   fetchLocalModels()
   fetchAvailableModels()
   fetchLlmModels()
+  loadShortcutSettings()
 })
 </script>
 
@@ -296,6 +388,36 @@ onMounted(() => {
               placeholder="Off"
               :dropdown-style="{ background: '#2c2c2e' }"
             />
+          </div>
+
+          <!-- Shortcut Settings -->
+          <div class="shortcut-section">
+            <div class="section-title">{{ t('settings.shortcut.title') }}</div>
+            <div class="config-item">
+              <span class="config-label">{{ t('settings.shortcut.toggleRecording') }}</span>
+              <div class="shortcut-inputs">
+                <a-select
+                  v-model:value="shortcutModifiers"
+                  mode="multiple"
+                  :options="modifierOptions"
+                  size="small"
+                  class="modifier-select"
+                  :dropdown-style="{ background: '#2c2c2e' }"
+                />
+                <span class="shortcut-plus">+</span>
+                <a-select
+                  v-model:value="shortcutKey"
+                  :options="keyOptions"
+                  size="small"
+                  class="key-select"
+                  :dropdown-style="{ background: '#2c2c2e' }"
+                />
+                <a-button size="small" @click="saveShortcut">
+                  {{ t('settings.shortcut.save') }}
+                </a-button>
+              </div>
+            </div>
+            <div v-if="shortcutError" class="shortcut-error">{{ shortcutError }}</div>
           </div>
         </div>
 
@@ -590,6 +712,39 @@ onMounted(() => {
 
 .model-section {
   margin-top: 8px;
+}
+
+.shortcut-section {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.shortcut-inputs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.modifier-select {
+  min-width: 120px;
+  max-width: 180px;
+}
+
+.key-select {
+  width: 70px;
+}
+
+.shortcut-plus {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+}
+
+.shortcut-error {
+  color: #ff4d4f;
+  font-size: 11px;
+  margin-top: 6px;
 }
 
 .section-title {

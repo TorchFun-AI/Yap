@@ -31,6 +31,13 @@ export default {
       downloading: '下载中...',
       noLocalModels: '暂无本地模型',
     },
+    // 快捷键设置
+    shortcut: {
+      title: '快捷键',
+      toggleRecording: '开始/停止录音',
+      save: '保存',
+      invalid: '无效的快捷键',
+    },
   },
 
   // 悬浮球操作项
