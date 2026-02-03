@@ -35,6 +35,7 @@ export default {
     shortcut: {
       title: 'Shortcuts',
       toggleRecording: 'Toggle Recording',
+      openSettings: 'Open Settings',
       save: 'Save',
       invalid: 'Invalid shortcut',
     },

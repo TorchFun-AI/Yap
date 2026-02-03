@@ -35,6 +35,7 @@ export default {
     shortcut: {
       title: '快捷键',
       toggleRecording: '开始/停止录音',
+      openSettings: '打开设置',
       save: '保存',
       invalid: '无效的快捷键',
     },

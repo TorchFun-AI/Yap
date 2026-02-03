@@ -73,6 +73,11 @@ const shortcutModifiers = ref<string[]>(['Alt'])
 const shortcutKey = ref('F5')
 const shortcutError = ref('')
 
+// 打开设置快捷键
+const openSettingsModifiers = ref<string[]>(appState.openSettingsShortcut.modifiers)
+const openSettingsKey = ref(appState.openSettingsShortcut.key)
+const openSettingsError = ref('')
+
 // 修饰键选项
 const modifierOptions = [
   { value: 'Alt', label: 'Alt/Option' },
@@ -83,6 +88,7 @@ const modifierOptions = [
 
 // 按键选项
 const keyOptions = [
+  { value: ',', label: ',' },
   { value: 'F1', label: 'F1' },
   { value: 'F2', label: 'F2' },
   { value: 'F3', label: 'F3' },
@@ -195,6 +201,19 @@ async function saveShortcut() {
     shortcutError.value = t('settings.shortcut.invalid')
     console.error('Failed to save shortcut:', e)
   }
+}
+
+// 保存打开设置快捷键
+function saveOpenSettingsShortcut() {
+  openSettingsError.value = ''
+  if (openSettingsModifiers.value.length === 0) {
+    openSettingsError.value = t('settings.shortcut.invalid')
+    return
+  }
+  appState.setOpenSettingsShortcut({
+    modifiers: openSettingsModifiers.value,
+    key: openSettingsKey.value,
+  })
 }
 
 // ASR 模型管理
@@ -418,6 +437,33 @@ onMounted(() => {
               </div>
             </div>
             <div v-if="shortcutError" class="shortcut-error">{{ shortcutError }}</div>
+
+            <!-- 打开设置快捷键 -->
+            <div class="config-item">
+              <span class="config-label">{{ t('settings.shortcut.openSettings') }}</span>
+              <div class="shortcut-inputs">
+                <a-select
+                  v-model:value="openSettingsModifiers"
+                  mode="multiple"
+                  :options="modifierOptions"
+                  size="small"
+                  class="modifier-select"
+                  :dropdown-style="{ background: '#2c2c2e' }"
+                />
+                <span class="shortcut-plus">+</span>
+                <a-select
+                  v-model:value="openSettingsKey"
+                  :options="keyOptions"
+                  size="small"
+                  class="key-select"
+                  :dropdown-style="{ background: '#2c2c2e' }"
+                />
+                <a-button size="small" @click="saveOpenSettingsShortcut">
+                  {{ t('settings.shortcut.save') }}
+                </a-button>
+              </div>
+            </div>
+            <div v-if="openSettingsError" class="shortcut-error">{{ openSettingsError }}</div>
           </div>
         </div>
 
@@ -718,6 +764,10 @@ onMounted(() => {
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.shortcut-section .config-item {
+  margin-top: 10px;
 }
 
 .shortcut-inputs {

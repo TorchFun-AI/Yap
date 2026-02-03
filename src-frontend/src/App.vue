@@ -25,6 +25,41 @@ const floatingBallRef = ref<InstanceType<typeof FloatingBallV2> | null>(null)
 let unlistenSettingsChanged: UnlistenFn | null = null
 let unlistenToggleRecording: UnlistenFn | null = null
 
+// 打开设置快捷键处理函数
+const handleOpenSettingsShortcut = async (e: KeyboardEvent) => {
+  const shortcut = appState.openSettingsShortcut
+
+  // 检查修饰键
+  const modifiersMatch = shortcut.modifiers.every(mod => {
+    switch (mod) {
+      case 'Meta': return e.metaKey
+      case 'Ctrl': return e.ctrlKey
+      case 'Alt': return e.altKey
+      case 'Shift': return e.shiftKey
+      default: return false
+    }
+  })
+
+  // 确保没有额外的修饰键被按下
+  const extraModifiers =
+    (e.metaKey && !shortcut.modifiers.includes('Meta')) ||
+    (e.ctrlKey && !shortcut.modifiers.includes('Ctrl')) ||
+    (e.altKey && !shortcut.modifiers.includes('Alt')) ||
+    (e.shiftKey && !shortcut.modifiers.includes('Shift'))
+
+  // 检查按键是否匹配
+  const keyMatch = e.key.toLowerCase() === shortcut.key.toLowerCase()
+
+  if (modifiersMatch && !extraModifiers && keyMatch) {
+    e.preventDefault()
+    try {
+      await invoke('open_settings_window')
+    } catch (err) {
+      console.error('Failed to open settings window:', err)
+    }
+  }
+}
+
 // 球区域的边界（相对于窗口，悬浮球在左上角）
 const ballOnlyBounds = {
   left: WINDOW_SHADOW,
@@ -210,6 +245,9 @@ const handleAction = async (id: string, _value?: string) => {
 
 // 初始化窗口 - 固定大小
 onMounted(async () => {
+  // 监听打开设置快捷键
+  document.addEventListener('keydown', handleOpenSettingsShortcut)
+
   // 监听快捷键触发的录音切换事件
   unlistenToggleRecording = await listen('toggle_recording', () => {
     toggleRecording()
@@ -336,6 +374,9 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  // 移除打开设置快捷键监听
+  document.removeEventListener('keydown', handleOpenSettingsShortcut)
+
   if (unlistenToggleRecording) {
     unlistenToggleRecording()
   }
