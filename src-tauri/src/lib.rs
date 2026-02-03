@@ -352,11 +352,14 @@ pub fn run() {
                 }
             }
 
-            // Start backend sidecar
-            let sidecar_command = app.shell().sidecar("vocistant-backend")
-                .map_err(|e| format!("Failed to create sidecar command: {}", e))?;
+            // Start backend sidecar from resources directory
+            let resource_path = app.path().resource_dir()
+                .map_err(|e| format!("Failed to get resource dir: {}", e))?;
+            let sidecar_path = resource_path.join("vocistant-backend");
 
-            let (mut rx, child) = sidecar_command.spawn()
+            log::info!("Starting backend sidecar from: {:?}", sidecar_path);
+
+            let (mut rx, child) = app.shell().command(&sidecar_path).spawn()
                 .map_err(|e| format!("Failed to spawn sidecar: {}", e))?;
 
             log::info!("Backend sidecar started with PID: {}", child.pid());

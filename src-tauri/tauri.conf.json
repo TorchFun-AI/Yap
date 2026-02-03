@@ -43,9 +43,9 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "externalBin": [
-      "binaries/vocistant-backend"
-    ]
+    "resources": {
+      "binaries/vocistant-backend": "./"
+    }
   },
   "plugins": {
     "shell": {

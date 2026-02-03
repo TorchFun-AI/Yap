@@ -1,7 +1,7 @@
 # Vocistant Build System
 # Target: macOS arm64 (Apple Silicon)
 
-.PHONY: all build build-backend build-frontend clean install-deps help
+.PHONY: all build build-backend build-frontend clean install-deps help setup-placeholder dev
 
 # Directories
 BACKEND_DIR := src-backend
@@ -37,19 +37,20 @@ install-deps:
 	pip install pyinstaller
 	@echo "Done."
 
-# Build backend sidecar
+# Build backend sidecar (directory mode for faster startup)
 build-backend:
 	@echo "Building backend sidecar..."
 	@mkdir -p $(BINARIES_DIR)
 	cd $(BACKEND_DIR) && pyinstaller \
-		--distpath ../$(BINARIES_DIR) \
+		--distpath dist \
 		--workpath build \
 		--clean \
 		--noconfirm \
 		vocistant-backend.spec
-	@# Rename to include target triple for Tauri sidecar
-	@mv $(BINARIES_DIR)/vocistant-backend $(BINARIES_DIR)/vocistant-backend-$(TARGET_TRIPLE)
-	@echo "Backend sidecar built: $(BINARIES_DIR)/vocistant-backend-$(TARGET_TRIPLE)"
+	@# Copy directory for Tauri resources
+	@rm -rf $(BINARIES_DIR)/vocistant-backend
+	@cp -r $(BACKEND_DIR)/dist/vocistant-backend $(BINARIES_DIR)/vocistant-backend
+	@echo "Backend sidecar built: $(BINARIES_DIR)/vocistant-backend/"
 
 # Build frontend
 build-frontend:
@@ -65,10 +66,19 @@ build: build-backend
 	@echo "Output: $(TAURI_DIR)/target/release/bundle/"
 
 # Development mode (without backend packaging)
-dev:
+dev: setup-placeholder
 	@echo "Starting development mode..."
 	@echo "Note: Start backend manually with 'cd $(BACKEND_DIR) && python main.py'"
 	cd $(TAURI_DIR) && cargo tauri dev
+
+# Setup placeholder sidecar for development
+setup-placeholder:
+	@mkdir -p $(BINARIES_DIR)/vocistant-backend
+	@if [ ! -f $(BINARIES_DIR)/vocistant-backend/vocistant-backend ]; then \
+		echo '#!/bin/bash' > $(BINARIES_DIR)/vocistant-backend/vocistant-backend; \
+		chmod +x $(BINARIES_DIR)/vocistant-backend/vocistant-backend; \
+		echo "Created placeholder sidecar for development"; \
+	fi
 
 # Clean build artifacts
 clean:
