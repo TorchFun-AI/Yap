@@ -20,6 +20,7 @@ const STORAGE_KEYS = {
   // Context configuration
   contextEnabled: 'app-context-enabled',
   contextCount: 'app-context-count',
+  contextMaxHistory: 'app-context-max-history',
   // LLM 配置
   llmApiKey: 'app-llm-api-key',
   llmApiBase: 'app-llm-api-base',
@@ -54,6 +55,7 @@ function loadSettings() {
   // Context configuration
   const savedContextEnabled = localStorage.getItem(STORAGE_KEYS.contextEnabled)
   const savedContextCount = localStorage.getItem(STORAGE_KEYS.contextCount)
+  const savedContextMaxHistory = localStorage.getItem(STORAGE_KEYS.contextMaxHistory)
 
   // LLM 配置
   const savedLlmApiKey = localStorage.getItem(STORAGE_KEYS.llmApiKey)
@@ -75,6 +77,7 @@ function loadSettings() {
     // Context configuration
     contextEnabled: savedContextEnabled !== null ? savedContextEnabled === 'true' : true,
     contextCount: savedContextCount ? parseInt(savedContextCount) : 3,
+    contextMaxHistory: savedContextMaxHistory ? parseInt(savedContextMaxHistory) : 10,
     // LLM 配置
     llmApiKey: savedLlmApiKey || 'ollama',
     llmApiBase: savedLlmApiBase || 'http://localhost:11434/v1',
@@ -123,6 +126,7 @@ export const useAppState = defineStore('appState', () => {
   // Context configuration
   const contextEnabled = ref(savedSettings.contextEnabled)
   const contextCount = ref(savedSettings.contextCount)
+  const contextMaxHistory = ref(savedSettings.contextMaxHistory)
 
   // LLM 配置
   const llmApiKey = ref(savedSettings.llmApiKey)
@@ -169,8 +173,8 @@ export const useAppState = defineStore('appState', () => {
         timestamp: Date.now(),
         duration
       })
-      // 保留最近 10 条
-      if (messageHistory.value.length > 10) {
+      // 保留最近 N 条
+      if (messageHistory.value.length > contextMaxHistory.value) {
         messageHistory.value.pop()
       }
     }
@@ -237,6 +241,12 @@ export const useAppState = defineStore('appState', () => {
     contextCount.value = count
     localStorage.setItem(STORAGE_KEYS.contextCount, String(count))
     syncConfigToBackend()
+    notifySettingsChanged()
+  }
+
+  function setContextMaxHistory(count: number) {
+    contextMaxHistory.value = count
+    localStorage.setItem(STORAGE_KEYS.contextMaxHistory, String(count))
     notifySettingsChanged()
   }
 
@@ -339,6 +349,7 @@ export const useAppState = defineStore('appState', () => {
     if (settings.correctionEnabled !== undefined) correctionEnabled.value = settings.correctionEnabled
     if (settings.contextEnabled !== undefined) contextEnabled.value = settings.contextEnabled
     if (settings.contextCount !== undefined) contextCount.value = settings.contextCount
+    if (settings.contextMaxHistory !== undefined) contextMaxHistory.value = settings.contextMaxHistory
     if (settings.llmApiKey !== undefined) llmApiKey.value = settings.llmApiKey
     if (settings.llmApiBase !== undefined) llmApiBase.value = settings.llmApiBase
     if (settings.llmModel !== undefined) llmModel.value = settings.llmModel
@@ -363,6 +374,7 @@ export const useAppState = defineStore('appState', () => {
     // Context configuration
     contextEnabled,
     contextCount,
+    contextMaxHistory,
     waveformLevels,
     // 消息历史
     messageHistory,
@@ -391,6 +403,7 @@ export const useAppState = defineStore('appState', () => {
     // Context configuration methods
     setContextEnabled,
     setContextCount,
+    setContextMaxHistory,
     // LLM 配置方法
     setLlmApiKey,
     setLlmApiBase,

@@ -8,9 +8,12 @@ export default {
     contextCount: '上下文数量',
     contextCountTip: '校正时参考的历史消息数量',
     translate: '翻译',
+    translateLanguage: '翻译语言',
+    maxHistory: '历史记录数量',
     uiLanguage: '界面语言',
     tabs: {
       general: '通用',
+      voice: '输入处理',
       llm: 'LLM',
       asr: 'ASR',
     },

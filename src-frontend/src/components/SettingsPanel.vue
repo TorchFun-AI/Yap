@@ -20,7 +20,7 @@ const emit = defineEmits<{
 const appState = useAppState()
 
 // 当前选中的设置标签
-const activeTab = ref<'general' | 'llm' | 'asr'>('general')
+const activeTab = ref<'general' | 'voice' | 'llm' | 'asr'>('general')
 
 // 录音中时禁用配置修改
 const isRecording = computed(() =>
@@ -329,6 +329,18 @@ onMounted(() => {
         </div>
         <div
           class="tab-item"
+          :class="{ active: activeTab === 'voice' }"
+          @click="activeTab = 'voice'"
+        >
+          <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+          </svg>
+          <span>{{ t('settings.tabs.voice') }}</span>
+        </div>
+        <div
+          class="tab-item"
           :class="{ active: activeTab === 'llm' }"
           @click="activeTab = 'llm'"
         >
@@ -369,70 +381,18 @@ onMounted(() => {
             />
           </div>
 
-          <!-- ASR Language -->
+          <!-- Max History -->
           <div class="config-item">
-            <span class="config-label">{{ t('settings.asrLanguage') }}</span>
-            <a-select
-              :value="appState.asrLanguage"
-              @update:value="appState.setAsrLanguage"
-              :disabled="isRecording"
-              :options="asrLanguageOptions"
-              size="small"
-              class="config-select"
-              :dropdown-style="{ background: '#2c2c2e' }"
-            />
-          </div>
-
-          <!-- Correction -->
-          <div class="config-item">
-            <span class="config-label">{{ t('settings.correction') }}</span>
-            <a-switch
-              :checked="appState.correctionEnabled"
-              @update:checked="appState.setCorrectionEnabled"
-              :disabled="isRecording"
-              size="small"
-            />
-          </div>
-
-          <!-- Context Correction -->
-          <div class="config-item" v-if="appState.correctionEnabled">
-            <span class="config-label">{{ t('settings.contextCorrection') }}</span>
-            <a-switch
-              :checked="appState.contextEnabled"
-              @update:checked="appState.setContextEnabled"
-              :disabled="isRecording"
-              size="small"
-            />
-          </div>
-
-          <!-- Context Count -->
-          <div class="config-item" v-if="appState.correctionEnabled && appState.contextEnabled">
-            <span class="config-label">{{ t('settings.contextCount') }}</span>
+            <span class="config-label">{{ t('settings.maxHistory') }}</span>
             <a-slider
-              :value="appState.contextCount"
-              @update:value="appState.setContextCount"
-              :disabled="isRecording"
-              :min="1"
-              :max="10"
+              :value="appState.contextMaxHistory"
+              @update:value="appState.setContextMaxHistory"
+              :min="5"
+              :max="20"
               :step="1"
               class="config-slider"
             />
-            <span class="slider-value">{{ appState.contextCount }}</span>
-          </div>
-
-          <!-- Translate -->
-          <div class="config-item">
-            <span class="config-label">{{ t('settings.translate') }}</span>
-            <a-select
-              :value="appState.targetLanguage"
-              @update:value="appState.setTargetLanguage"
-              :disabled="isRecording"
-              :options="translateLanguageOptions"
-              size="small"
-              class="config-select"
-              placeholder="Off"
-              :dropdown-style="{ background: '#2c2c2e' }"
-            />
+            <span class="slider-value">{{ appState.contextMaxHistory }}</span>
           </div>
 
           <!-- Shortcut Settings -->
@@ -490,6 +450,75 @@ onMounted(() => {
               </div>
             </div>
             <div v-if="openSettingsError" class="shortcut-error">{{ openSettingsError }}</div>
+          </div>
+        </div>
+
+        <!-- 语音设置 -->
+        <div v-show="activeTab === 'voice'" class="tab-pane">
+          <!-- ASR Language -->
+          <div class="config-item">
+            <span class="config-label">{{ t('settings.asrLanguage') }}</span>
+            <a-select
+              :value="appState.asrLanguage"
+              @update:value="appState.setAsrLanguage"
+              :disabled="isRecording"
+              :options="asrLanguageOptions"
+              size="small"
+              class="config-select"
+              :dropdown-style="{ background: '#2c2c2e' }"
+            />
+          </div>
+
+          <!-- Correction -->
+          <div class="config-item">
+            <span class="config-label">{{ t('settings.correction') }}</span>
+            <a-switch
+              :checked="appState.correctionEnabled"
+              @update:checked="appState.setCorrectionEnabled"
+              :disabled="isRecording"
+              size="small"
+            />
+          </div>
+
+          <!-- Context Correction -->
+          <div class="config-item" v-if="appState.correctionEnabled">
+            <span class="config-label">{{ t('settings.contextCorrection') }}</span>
+            <a-switch
+              :checked="appState.contextEnabled"
+              @update:checked="appState.setContextEnabled"
+              :disabled="isRecording"
+              size="small"
+            />
+          </div>
+
+          <!-- Context Count -->
+          <div class="config-item" v-if="appState.correctionEnabled && appState.contextEnabled">
+            <span class="config-label">{{ t('settings.contextCount') }}</span>
+            <a-slider
+              :value="appState.contextCount"
+              @update:value="appState.setContextCount"
+              :disabled="isRecording"
+              :min="1"
+              :max="10"
+              :step="1"
+              class="config-slider"
+            />
+            <span class="slider-value">{{ appState.contextCount }}</span>
+          </div>
+
+          <!-- Translate Language -->
+          <div class="config-item">
+            <span class="config-label">{{ t('settings.translateLanguage') }}</span>
+            <a-select
+              :value="appState.targetLanguage"
+              @update:value="appState.setTargetLanguage"
+              :disabled="isRecording"
+              :options="translateLanguageOptions"
+              size="small"
+              class="config-select"
+              placeholder="Off"
+              :dropdown-style="{ background: '#2c2c2e' }"
+            />
           </div>
         </div>
 

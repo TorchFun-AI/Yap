@@ -8,9 +8,12 @@ export default {
     contextCount: 'Context Count',
     contextCountTip: 'Number of recent messages to use as context',
     translate: 'Translation',
+    translateLanguage: 'Translate To',
+    maxHistory: 'History Limit',
     uiLanguage: 'UI Language',
     tabs: {
       general: 'General',
+      voice: 'Processing',
       llm: 'LLM',
       asr: 'ASR',
     },
