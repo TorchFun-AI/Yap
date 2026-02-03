@@ -4,6 +4,9 @@ export default {
     title: '设置',
     asrLanguage: '识别语言',
     correction: '文本校正',
+    contextCorrection: '上下文校正',
+    contextCount: '上下文数量',
+    contextCountTip: '校正时参考的历史消息数量',
     translate: '翻译',
     uiLanguage: '界面语言',
     tabs: {

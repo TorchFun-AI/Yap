@@ -12,6 +12,7 @@ from .llm_corrector import LLMCorrector
 from .llm_translator import LLMTranslator
 from .text_input import TextInput
 from .config import Config
+from .history_store import HistoryStore
 
 logger = logging.getLogger(__name__)
 
@@ -37,15 +38,22 @@ class AudioPipeline:
         self._correction_enabled = True
         self._target_language = None
         self._asr_language = None
+        # Context-aware correction config
+        self._context_enabled = True
+        self._context_count = 3
+        # History store for context
+        self.history_store = HistoryStore()
 
-    def set_config(self, correction_enabled: bool = True, target_language: str = None, asr_language: str = None, asr_model_path: str = None):
+    def set_config(self, correction_enabled: bool = True, target_language: str = None, asr_language: str = None, asr_model_path: str = None, context_enabled: bool = True, context_count: int = 3):
         """Set runtime configuration for correction and translation."""
         self._correction_enabled = correction_enabled
         self._target_language = target_language if target_language else None
         self._asr_language = asr_language if asr_language else None
+        self._context_enabled = context_enabled
+        self._context_count = context_count
         if asr_model_path:
             self.asr.set_model_path(asr_model_path)
-        logger.info(f"Pipeline config: asr_language={asr_language}, correction={correction_enabled}, target_language={target_language}, asr_model_path={asr_model_path}")
+        logger.info(f"Pipeline config: asr_language={asr_language}, correction={correction_enabled}, target_language={target_language}, context_enabled={context_enabled}, context_count={context_count}")
 
     def _emit_status(self, status: str, **kwargs):
         """Emit status update."""
@@ -63,6 +71,7 @@ class AudioPipeline:
         if self.translator:
             self.translator.initialize()
         self.text_input.initialize()
+        self.history_store.initialize()
         self.is_initialized = True
         logger.info("Pipeline initialized")
 
@@ -151,9 +160,16 @@ class AudioPipeline:
                     t_llm_start = time.perf_counter()
                     # Use configured ASR language for correction context
                     correction_lang = self._asr_language if self._asr_language and self._asr_language != 'auto' else self.asr.default_language
+
+                    # Get context from history if enabled
+                    context = None
+                    if self._context_enabled and self._context_count > 0:
+                        context = self.history_store.get_recent(self._context_count)
+
                     correction_result = self.llm.correct(
                         transcription,
-                        language=correction_lang
+                        language=correction_lang,
+                        context=context
                     )
                     t_llm_end = time.perf_counter()
                     logger.info(f"[TIMING] LLM correction completed in {(t_llm_end - t_llm_start)*1000:.0f}ms")
@@ -185,6 +201,14 @@ class AudioPipeline:
                 # Step 4: Input text at cursor position
                 self._emit_status("inputting", text=current_text)
                 self.text_input.input_text_typewriter(current_text)
+
+                # Step 5: Save to history for future context
+                self.history_store.add(
+                    text=current_text,
+                    original=original_text,
+                    duration=audio_duration,
+                    language=correction_lang if self._correction_enabled else (self._asr_language or 'zh')
+                )
 
             t_end = time.perf_counter()
             logger.info(f"[TIMING] Total processing time: {(t_end - t_start)*1000:.0f}ms")

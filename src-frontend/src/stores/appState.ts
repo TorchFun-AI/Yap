@@ -17,6 +17,9 @@ const STORAGE_KEYS = {
   asrLanguage: 'app-asr-language',
   targetLanguage: 'app-target-language',
   correctionEnabled: 'app-correction-enabled',
+  // Context configuration
+  contextEnabled: 'app-context-enabled',
+  contextCount: 'app-context-count',
   // LLM 配置
   llmApiKey: 'app-llm-api-key',
   llmApiBase: 'app-llm-api-base',
@@ -48,6 +51,10 @@ function loadSettings() {
   const savedTargetLang = localStorage.getItem(STORAGE_KEYS.targetLanguage)
   const savedCorrection = localStorage.getItem(STORAGE_KEYS.correctionEnabled)
 
+  // Context configuration
+  const savedContextEnabled = localStorage.getItem(STORAGE_KEYS.contextEnabled)
+  const savedContextCount = localStorage.getItem(STORAGE_KEYS.contextCount)
+
   // LLM 配置
   const savedLlmApiKey = localStorage.getItem(STORAGE_KEYS.llmApiKey)
   const savedLlmApiBase = localStorage.getItem(STORAGE_KEYS.llmApiBase)
@@ -65,6 +72,9 @@ function loadSettings() {
     asrLanguage: savedAsrLang || RECORDING_DEFAULT_LANGUAGE,
     targetLanguage: savedTargetLang || '',
     correctionEnabled: savedCorrection !== null ? savedCorrection === 'true' : true,
+    // Context configuration
+    contextEnabled: savedContextEnabled !== null ? savedContextEnabled === 'true' : true,
+    contextCount: savedContextCount ? parseInt(savedContextCount) : 3,
     // LLM 配置
     llmApiKey: savedLlmApiKey || 'ollama',
     llmApiBase: savedLlmApiBase || 'http://localhost:11434/v1',
@@ -109,6 +119,10 @@ export const useAppState = defineStore('appState', () => {
   const asrLanguage = ref(savedSettings.asrLanguage)
   const targetLanguage = ref(savedSettings.targetLanguage)
   const correctionEnabled = ref(savedSettings.correctionEnabled)
+
+  // Context configuration
+  const contextEnabled = ref(savedSettings.contextEnabled)
+  const contextCount = ref(savedSettings.contextCount)
 
   // LLM 配置
   const llmApiKey = ref(savedSettings.llmApiKey)
@@ -211,6 +225,21 @@ export const useAppState = defineStore('appState', () => {
     notifySettingsChanged()
   }
 
+  // Context configuration setters
+  function setContextEnabled(enabled: boolean) {
+    contextEnabled.value = enabled
+    localStorage.setItem(STORAGE_KEYS.contextEnabled, String(enabled))
+    syncConfigToBackend()
+    notifySettingsChanged()
+  }
+
+  function setContextCount(count: number) {
+    contextCount.value = count
+    localStorage.setItem(STORAGE_KEYS.contextCount, String(count))
+    syncConfigToBackend()
+    notifySettingsChanged()
+  }
+
   // LLM 配置 setters
   function setLlmApiKey(apiKey: string) {
     llmApiKey.value = apiKey
@@ -283,6 +312,8 @@ export const useAppState = defineStore('appState', () => {
         correctionEnabled: correctionEnabled.value,
         targetLanguage: targetLanguage.value || undefined,
         asrModelPath: asrModelPath.value || undefined,
+        contextEnabled: contextEnabled.value,
+        contextCount: contextCount.value,
       })
     }
   }
@@ -306,6 +337,8 @@ export const useAppState = defineStore('appState', () => {
     if (settings.asrLanguage !== undefined) asrLanguage.value = settings.asrLanguage
     if (settings.targetLanguage !== undefined) targetLanguage.value = settings.targetLanguage
     if (settings.correctionEnabled !== undefined) correctionEnabled.value = settings.correctionEnabled
+    if (settings.contextEnabled !== undefined) contextEnabled.value = settings.contextEnabled
+    if (settings.contextCount !== undefined) contextCount.value = settings.contextCount
     if (settings.llmApiKey !== undefined) llmApiKey.value = settings.llmApiKey
     if (settings.llmApiBase !== undefined) llmApiBase.value = settings.llmApiBase
     if (settings.llmModel !== undefined) llmModel.value = settings.llmModel
@@ -327,6 +360,9 @@ export const useAppState = defineStore('appState', () => {
     asrLanguage,
     targetLanguage,
     correctionEnabled,
+    // Context configuration
+    contextEnabled,
+    contextCount,
     waveformLevels,
     // 消息历史
     messageHistory,
@@ -352,6 +388,9 @@ export const useAppState = defineStore('appState', () => {
     setAsrLanguage,
     setTargetLanguage,
     setCorrectionEnabled,
+    // Context configuration methods
+    setContextEnabled,
+    setContextCount,
     // LLM 配置方法
     setLlmApiKey,
     setLlmApiBase,

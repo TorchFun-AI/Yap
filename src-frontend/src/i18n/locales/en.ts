@@ -4,6 +4,9 @@ export default {
     title: 'Settings',
     asrLanguage: 'Recognition Language',
     correction: 'Text Correction',
+    contextCorrection: 'Context Correction',
+    contextCount: 'Context Count',
+    contextCountTip: 'Number of recent messages to use as context',
     translate: 'Translation',
     uiLanguage: 'UI Language',
     tabs: {

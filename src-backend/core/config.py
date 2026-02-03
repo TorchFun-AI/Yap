@@ -30,6 +30,11 @@ class Config:
         self.llm_temperature = float(os.getenv("LLM_TEMPERATURE", "0.3"))
         self.llm_max_retries = int(os.getenv("LLM_MAX_RETRIES", "2"))
 
+        # Context Configuration
+        self.context_enabled = os.getenv("CONTEXT_ENABLED", "true").lower() == "true"
+        self.context_count = int(os.getenv("CONTEXT_COUNT", "3"))
+        self.context_max_history = int(os.getenv("CONTEXT_MAX_HISTORY", "500"))
+
         # Validate configuration
         self._validate()
 

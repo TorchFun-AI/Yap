@@ -7,7 +7,7 @@ Supports OpenAI-compatible API.
 import os
 import re
 import logging
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 from concurrent.futures import ThreadPoolExecutor
 import asyncio
 from openai import OpenAI
@@ -85,21 +85,33 @@ class LLMCorrector:
             logger.error(f"Failed to initialize LLM corrector: {e}")
             self.enabled = False
 
-    def _build_prompt(self, text: str, language: str = "zh") -> str:
-        """Build the correction prompt."""
+    def _build_prompt(self, text: str, language: str = "zh", context: List[str] = None) -> str:
+        """Build the correction prompt with optional context."""
         lang_name = "中文" if language in ["zh", "chinese"] else "English"
+
+        # Build context section if provided
+        context_section = ""
+        if context and len(context) > 0:
+            context_lines = "\n".join(f"- {c}" for c in context)
+            context_section = f"""
+* 参考上下文（用户最近的表达）:
+```
+{context_lines}
+```
+
+"""
 
         return f"""你是一个语音识别文本校正助手。
 
 核心原则: 语音识别的错误主要来源于发音相似（谐音、同音字），校正时应优先根据发音推断正确的文字。
-
-规则:
+{context_section}规则:
 1. 【最重要】根据发音推断正确文字：识别错误通常是谐音/同音字错误，请根据上下文和发音相似性推断正确的词。
    示例：
    - "我想吃平果" → "我想吃苹果"（平/苹 同音）
    - "这个问题很男" → "这个问题很难"（男/难 同音）
    - "请帮我定个酒店" → 保持不变（语义正确）
-2. 多语言混合表达处理：
+2. 【上下文参考】如果上下文中出现过相关术语或专有名词，优先使用上下文中的写法。
+3. 多语言混合表达处理：
    - 保留用户的中英混合形式，不要强制翻译
    - 英文单词可能被识别为中文谐音，需根据发音和上下文还原为英文
    - 符号可能被识别为其读音，需还原为符号形式
@@ -108,10 +120,10 @@ class LLMCorrector:
    - "这个阿派爱有问题" → "这个API有问题"（阿派爱 = API 的谐音）
    - "按Command加W关闭窗口" → "按Command+W关闭窗口"（加 = + 的读音）
    - "帮我check一下这个file" → 保持不变（已是正确形式）
-3. 去除无意义的口语词（如"那个"、"呃"、"嗯"）和冗余重复。
-4. 添加或调整标点符号，使断句准确自然。
-5. 保持原意不变，不要过度修改或添加内容。
-6. 语言: {lang_name}
+4. 去除无意义的口语词（如"那个"、"呃"、"嗯"）和冗余重复。
+5. 添加或调整标点符号，使断句准确自然。
+6. 保持原意不变，不要过度修改或添加内容。
+7. 语言: {lang_name}
 
 * 待校正文本:
 ```
@@ -120,13 +132,14 @@ class LLMCorrector:
 
 必须注意：将校正后的文本放在<corrected>标签内返回，例如：<corrected>校正后的文本</corrected>"""
 
-    def correct(self, text: str, language: str = "zh") -> Dict:
+    def correct(self, text: str, language: str = "zh", context: List[str] = None) -> Dict:
         """
         Correct text using LLM.
 
         Args:
             text: Text to correct
             language: Language code (zh, en, etc.)
+            context: List of recent transcription texts for context
 
         Returns:
             Dict with corrected_text, original_text, is_corrected, and optional error
@@ -150,7 +163,7 @@ class LLMCorrector:
             }
 
         try:
-            prompt = self._build_prompt(text, language)
+            prompt = self._build_prompt(text, language, context)
 
             response = self.client.chat.completions.create(
                 model=self.model,
@@ -193,10 +206,13 @@ class LLMCorrector:
                 "error": str(e),
             }
 
-    async def correct_async(self, text: str, language: str = "zh") -> Dict:
+    async def correct_async(self, text: str, language: str = "zh", context: List[str] = None) -> Dict:
         """Async wrapper for correction."""
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(self.executor, self.correct, text, language)
+        return await loop.run_in_executor(
+            self.executor,
+            lambda: self.correct(text, language, context)
+        )
 
     def reconfigure(self, **kwargs) -> None:
         """动态重新配置 LLM 客户端"""

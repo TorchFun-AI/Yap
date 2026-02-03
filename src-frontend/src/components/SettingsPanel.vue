@@ -394,6 +394,32 @@ onMounted(() => {
             />
           </div>
 
+          <!-- Context Correction -->
+          <div class="config-item" v-if="appState.correctionEnabled">
+            <span class="config-label">{{ t('settings.contextCorrection') }}</span>
+            <a-switch
+              :checked="appState.contextEnabled"
+              @update:checked="appState.setContextEnabled"
+              :disabled="isRecording"
+              size="small"
+            />
+          </div>
+
+          <!-- Context Count -->
+          <div class="config-item" v-if="appState.correctionEnabled && appState.contextEnabled">
+            <span class="config-label">{{ t('settings.contextCount') }}</span>
+            <a-slider
+              :value="appState.contextCount"
+              @update:value="appState.setContextCount"
+              :disabled="isRecording"
+              :min="1"
+              :max="10"
+              :step="1"
+              class="config-slider"
+            />
+            <span class="slider-value">{{ appState.contextCount }}</span>
+          </div>
+
           <!-- Translate -->
           <div class="config-item">
             <span class="config-label">{{ t('settings.translate') }}</span>

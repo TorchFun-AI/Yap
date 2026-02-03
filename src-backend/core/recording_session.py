@@ -62,11 +62,15 @@ class RecordingSession:
             correction_enabled = config.get("correctionEnabled", True)
             target_language = config.get("targetLanguage", None)
             asr_model_path = config.get("asrModelPath", None)
+            context_enabled = config.get("contextEnabled", True)
+            context_count = config.get("contextCount", 3)
             self._pipeline.set_config(
                 correction_enabled=correction_enabled,
                 target_language=target_language,
                 asr_language=asr_language,
-                asr_model_path=asr_model_path
+                asr_model_path=asr_model_path,
+                context_enabled=context_enabled,
+                context_count=context_count
             )
 
         self._audio_capture.start(callback=self._on_audio_chunk)
@@ -104,11 +108,15 @@ class RecordingSession:
         correction_enabled = config.get("correctionEnabled")
         target_language = config.get("targetLanguage")
         asr_model_path = config.get("asrModelPath")
+        context_enabled = config.get("contextEnabled", True)
+        context_count = config.get("contextCount", 3)
         self._pipeline.set_config(
             correction_enabled=correction_enabled,
             target_language=target_language,
             asr_language=asr_language,
-            asr_model_path=asr_model_path
+            asr_model_path=asr_model_path,
+            context_enabled=context_enabled,
+            context_count=context_count
         )
 
     def update_llm_config(self, config: dict) -> None:
