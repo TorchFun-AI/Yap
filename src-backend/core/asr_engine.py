@@ -14,6 +14,16 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 
+def _detect_model_type(model_path: str) -> str:
+    """根据模型路径检测模型类型"""
+    if not model_path:
+        return "funasr"
+    path_lower = model_path.lower()
+    if "whisper" in path_lower:
+        return "whisper"
+    return "funasr"
+
+
 class ASREngine:
     """Automatic Speech Recognition engine using MLX Audio FunASR."""
 
@@ -22,21 +32,28 @@ class ASREngine:
         self.model_path = os.getenv("ASR_MODEL_PATH", model_path or default_path)
         self.default_language = os.getenv("ASR_DEFAULT_LANGUAGE", "zh")
         self.model = None
+        self.model_type = None
         self.is_initialized = False
         self.executor = ThreadPoolExecutor(max_workers=2)
 
     def initialize(self) -> None:
-        """Initialize the MLX Audio FunASR model."""
+        """Initialize the ASR model based on model type."""
         if self.is_initialized:
             return
 
         try:
-            from mlx_audio.stt.models.funasr import Model
+            self.model_type = _detect_model_type(self.model_path)
+            logger.info(f"Loading {self.model_type} model: {self.model_path}")
 
-            logger.info(f"Loading model: {self.model_path}")
-            self.model = Model.from_pretrained(self.model_path, fix_mistral_regex=True)
+            if self.model_type == "whisper":
+                from mlx_audio.stt.models.whisper import Model
+                self.model = Model.from_pretrained(self.model_path)
+            else:
+                from mlx_audio.stt.models.funasr import Model
+                self.model = Model.from_pretrained(self.model_path, fix_mistral_regex=True)
+
             self.is_initialized = True
-            logger.info("MLX Audio FunASR model loaded successfully")
+            logger.info(f"{self.model_type} model loaded successfully")
         except Exception as e:
             logger.error(f"Model loading failed: {e}")
             raise
@@ -64,6 +81,7 @@ class ASREngine:
         """设置模型路径（需要重新初始化）"""
         if model_path != self.model_path:
             self.model_path = model_path
+            self.model_type = None
             self.is_initialized = False
             self.model = None
             logger.info(f"ASR model path changed to: {model_path}")

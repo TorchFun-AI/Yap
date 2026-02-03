@@ -49,6 +49,10 @@ class RecordingSession:
             if llm_config:
                 self._pipeline.update_llm_config(llm_config)
 
+        # Apply ASR model path BEFORE initialize (so correct model type is loaded)
+        if config and config.get("asrModelPath"):
+            self._pipeline.asr.set_model_path(config["asrModelPath"])
+
         # Initialize pipeline (loads ASR model and LLM client)
         self._pipeline.initialize()
 
