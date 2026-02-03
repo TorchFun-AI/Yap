@@ -614,12 +614,12 @@ onMounted(() => {
   position: relative;
   top: 0;
   left: 0;
-  width: calc(100% - 32px);
-  height: calc(100% - 32px);
-  margin: 16px;
+  width: 100%;
+  height: 100%;
+  margin: 0;
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
   background: rgba(28, 28, 30, 0.85);
   backdrop-filter: blur(25px);
   -webkit-backdrop-filter: blur(25px);

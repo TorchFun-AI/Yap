@@ -156,7 +156,7 @@ fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
         tauri::WebviewUrl::App("settings.html".into()),
     )
     .title("Settings")
-    .inner_size(560.0, 440.0)
+    .inner_size(592.0, 472.0)
     .resizable(false)
     .center()
     .decorations(false)

@@ -25,6 +25,18 @@ const floatingBallRef = ref<InstanceType<typeof FloatingBallV2> | null>(null)
 let unlistenSettingsChanged: UnlistenFn | null = null
 let unlistenToggleRecording: UnlistenFn | null = null
 
+// 关闭设置窗口快捷键处理函数 (Command+W / Ctrl+W)
+const handleCloseSettingsShortcut = async (e: KeyboardEvent) => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'w') {
+    e.preventDefault()
+    try {
+      await invoke('close_settings_window')
+    } catch (err) {
+      // 忽略错误（设置窗口可能未打开）
+    }
+  }
+}
+
 // 打开设置快捷键处理函数
 const handleOpenSettingsShortcut = async (e: KeyboardEvent) => {
   const shortcut = appState.openSettingsShortcut
@@ -247,6 +259,8 @@ const handleAction = async (id: string, _value?: string) => {
 onMounted(async () => {
   // 监听打开设置快捷键
   document.addEventListener('keydown', handleOpenSettingsShortcut)
+  // 监听关闭设置窗口快捷键 (Command+W / Ctrl+W)
+  document.addEventListener('keydown', handleCloseSettingsShortcut)
 
   // 监听快捷键触发的录音切换事件
   unlistenToggleRecording = await listen('toggle_recording', () => {
@@ -376,6 +390,8 @@ onMounted(async () => {
 onUnmounted(() => {
   // 移除打开设置快捷键监听
   document.removeEventListener('keydown', handleOpenSettingsShortcut)
+  // 移除关闭设置窗口快捷键监听
+  document.removeEventListener('keydown', handleCloseSettingsShortcut)
 
   if (unlistenToggleRecording) {
     unlistenToggleRecording()
