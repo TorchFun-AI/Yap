@@ -64,3 +64,8 @@ def setup_websocket_logging():
     handler = WebSocketLogHandler()
     handler.setLevel(logging.DEBUG)
     logging.getLogger().addHandler(handler)
+
+    # 配置 uvicorn 日志器传播到根日志器
+    for logger_name in ["uvicorn", "uvicorn.error", "uvicorn.access"]:
+        uvicorn_logger = logging.getLogger(logger_name)
+        uvicorn_logger.propagate = True
