@@ -366,6 +366,11 @@ function disconnectLogs() {
   isLogConnected.value = false
 }
 
+// 打开开发者工具
+async function openDevTools() {
+  await invoke('open_devtools')
+}
+
 // 滚动到底部
 function scrollToBottom() {
   if (logContainerRef.value) {
@@ -796,6 +801,9 @@ onUnmounted(() => {
               </a-button>
               <a-button size="small" @click="appState.clearLogs">
                 {{ t('settings.debug.clear') }}
+              </a-button>
+              <a-button size="small" @click="openDevTools">
+                {{ t('settings.debug.devtools') }}
               </a-button>
             </div>
           </div>

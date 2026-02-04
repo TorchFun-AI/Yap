@@ -64,6 +64,7 @@ export default {
       disconnected: '未连接',
       noLogs: '暂无日志',
       copied: '已复制到剪贴板',
+      devtools: '开发者工具',
     },
   },
 

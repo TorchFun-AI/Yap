@@ -64,6 +64,7 @@ export default {
       disconnected: 'Disconnected',
       noLogs: 'No logs',
       copied: 'Copied to clipboard',
+      devtools: 'DevTools',
     },
   },
 

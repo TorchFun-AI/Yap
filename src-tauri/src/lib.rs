@@ -196,6 +196,12 @@ fn broadcast_settings_changed(app: tauri::AppHandle) -> Result<(), String> {
     app.emit("settings-changed", ()).map_err(|e| e.to_string())
 }
 
+/// 打开开发者工具
+#[tauri::command]
+fn open_devtools(webview_window: tauri::WebviewWindow) {
+    webview_window.open_devtools();
+}
+
 /// 解析修饰键字符串为 Modifiers
 fn parse_modifiers(modifiers: &[String]) -> Modifiers {
     let mut result = Modifiers::empty();
@@ -412,7 +418,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![greet, save_window_position, load_window_position, set_window_bounds, set_ignore_cursor_events, get_cursor_position, open_settings_window, close_settings_window, broadcast_settings_changed, get_shortcut_settings, update_shortcut])
+        .invoke_handler(tauri::generate_handler![greet, save_window_position, load_window_position, set_window_bounds, set_ignore_cursor_events, get_cursor_position, open_settings_window, close_settings_window, broadcast_settings_changed, get_shortcut_settings, update_shortcut, open_devtools])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app, event| {
