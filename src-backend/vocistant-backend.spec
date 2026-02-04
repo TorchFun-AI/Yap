@@ -4,6 +4,8 @@ PyInstaller spec file for Vocistant Backend
 Target: macOS arm64 (Apple Silicon)
 """
 
+import os
+import site
 import sys
 from pathlib import Path
 
@@ -13,11 +15,18 @@ block_cipher = None
 BACKEND_DIR = Path(SPECPATH)
 PROJECT_ROOT = BACKEND_DIR.parent
 
+# MLX metallib path - needed for Metal GPU acceleration
+# MLX looks for mlx.metallib in the same directory as the executable
+site_packages = site.getsitepackages()[0]
+mlx_metallib = os.path.join(site_packages, 'mlx', 'lib', 'mlx.metallib')
+
 a = Analysis(
     ['main.py'],
     pathex=[str(BACKEND_DIR)],
     binaries=[],
-    datas=[],
+    datas=[
+        (mlx_metallib, '.'),  # Copy mlx.metallib to executable directory
+    ],
     hiddenimports=[
         # MLX and audio processing
         'mlx',
