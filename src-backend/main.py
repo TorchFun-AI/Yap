@@ -15,7 +15,7 @@ from core.recording_session import RecordingSession
 from core.audio_capture import AudioCapture
 from core.waveform_analyzer import register_waveform_callback, unregister_waveform_callback
 from core.model_manager import ModelManager
-from core.log_handler import setup_websocket_logging, register_log_client, unregister_log_client
+from core.log_handler import setup_websocket_logging, register_log_client, unregister_log_client, get_pending_logs
 
 # Configure logging
 logging.basicConfig(
@@ -199,24 +199,24 @@ async def logs_websocket(websocket: WebSocket):
     await websocket.accept()
     import asyncio
 
-    queue: asyncio.Queue = asyncio.Queue(maxsize=100)
-
-    # Register client and get buffered logs
-    buffered_logs = register_log_client(queue)
+    # Register client and get history logs
+    client_id, history_logs = register_log_client()
 
     try:
-        # Send buffered logs first
-        for log_entry in buffered_logs:
+        # Send history logs first
+        for log_entry in history_logs:
             await websocket.send_json(log_entry)
 
-        # Stream new logs
+        # Poll and stream new logs
         while True:
-            log_entry = await queue.get()
-            await websocket.send_json(log_entry)
+            pending_logs = get_pending_logs(client_id)
+            for log_entry in pending_logs:
+                await websocket.send_json(log_entry)
+            await asyncio.sleep(0.1)
     except WebSocketDisconnect:
         print("Log client disconnected")
     finally:
-        unregister_log_client(queue)
+        unregister_log_client(client_id)
 
 
 def main():
