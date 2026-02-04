@@ -63,6 +63,7 @@ export default {
       connected: 'Connected',
       disconnected: 'Disconnected',
       noLogs: 'No logs',
+      copied: 'Copied to clipboard',
     },
   },
 

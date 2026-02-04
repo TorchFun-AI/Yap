@@ -6,6 +6,13 @@ import { useAppState } from '@/stores/appState'
 import { AppStatus } from '@/constants'
 import { setLocale, getLocale } from '@/i18n'
 import { logController } from '@/services/logController'
+import { message } from 'ant-design-vue'
+
+// 配置消息提示框
+message.config({
+  top: '60px',
+  duration: 2,
+})
 
 const { t } = useI18n()
 
@@ -376,6 +383,17 @@ function getLogLevelClass(level: string): string {
     CRITICAL: 'log-critical',
   }
   return classes[level] || ''
+}
+
+// 双击复制日志条目
+async function copyLogEntry(log: { timestamp: string; level: string; logger: string; message: string }) {
+  const text = `${log.timestamp} [${log.level}] ${log.logger}: ${log.message}`
+  try {
+    await navigator.clipboard.writeText(text)
+    message.success(t('settings.debug.copied'))
+  } catch (e) {
+    console.error('Failed to copy log entry:', e)
+  }
 }
 
 // 监听标签切换，自动连接/断开
@@ -807,6 +825,7 @@ onUnmounted(() => {
               :key="index"
               class="log-entry"
               :class="getLogLevelClass(log.level)"
+              @dblclick="copyLogEntry(log)"
             >
               <span class="log-time">{{ log.timestamp.split('T')[1]?.split('.')[0] || '' }}</span>
               <span class="log-level">{{ log.level }}</span>
@@ -1274,8 +1293,15 @@ onUnmounted(() => {
 .log-entry {
   display: flex;
   gap: 8px;
-  padding: 2px 0;
+  padding: 2px 4px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.log-entry:hover {
+  background-color: rgba(255, 255, 255, 0.08);
 }
 
 .log-time {
@@ -1316,5 +1342,22 @@ onUnmounted(() => {
 :deep(.ant-checkbox-wrapper) {
   color: rgba(255, 255, 255, 0.7) !important;
   font-size: 11px !important;
+}
+</style>
+
+<style>
+/* 消息提示框深色主题 */
+.ant-message .ant-message-notice-content {
+  background: rgba(45, 45, 48, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.ant-message .ant-message-success .anticon {
+  color: #52c41a;
 }
 </style>

@@ -63,6 +63,7 @@ export default {
       connected: '已连接',
       disconnected: '未连接',
       noLogs: '暂无日志',
+      copied: '已复制到剪贴板',
     },
   },
 
