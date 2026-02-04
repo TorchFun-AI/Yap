@@ -9,7 +9,7 @@ const appWindow = getCurrentWindow()
 const RESIZE_EDGE = 8
 
 // 根据鼠标位置判断 resize 方向
-type ResizeDirection = 'north' | 'south' | 'east' | 'west' | 'northEast' | 'northWest' | 'southEast' | 'southWest' | null
+type ResizeDirection = 'North' | 'South' | 'East' | 'West' | 'NorthEast' | 'NorthWest' | 'SouthEast' | 'SouthWest' | null
 
 function getResizeDirection(e: MouseEvent): ResizeDirection {
   const el = e.currentTarget as HTMLElement
@@ -24,27 +24,27 @@ function getResizeDirection(e: MouseEvent): ResizeDirection {
   const onTop = y < RESIZE_EDGE
   const onBottom = y > h - RESIZE_EDGE
 
-  if (onTop && onLeft) return 'northWest'
-  if (onTop && onRight) return 'northEast'
-  if (onBottom && onLeft) return 'southWest'
-  if (onBottom && onRight) return 'southEast'
-  if (onTop) return 'north'
-  if (onBottom) return 'south'
-  if (onLeft) return 'west'
-  if (onRight) return 'east'
+  if (onTop && onLeft) return 'NorthWest'
+  if (onTop && onRight) return 'NorthEast'
+  if (onBottom && onLeft) return 'SouthWest'
+  if (onBottom && onRight) return 'SouthEast'
+  if (onTop) return 'North'
+  if (onBottom) return 'South'
+  if (onLeft) return 'West'
+  if (onRight) return 'East'
   return null
 }
 
 // 方向到光标样式的映射
-const cursorMap: Record<string, string> = {
-  north: 'ns-resize',
-  south: 'ns-resize',
-  east: 'ew-resize',
-  west: 'ew-resize',
-  northEast: 'nesw-resize',
-  southWest: 'nesw-resize',
-  northWest: 'nwse-resize',
-  southEast: 'nwse-resize',
+const cursorMap: Record<NonNullable<ResizeDirection>, string> = {
+  North: 'ns-resize',
+  South: 'ns-resize',
+  East: 'ew-resize',
+  West: 'ew-resize',
+  NorthEast: 'nesw-resize',
+  SouthWest: 'nesw-resize',
+  NorthWest: 'nwse-resize',
+  SouthEast: 'nwse-resize',
 }
 
 // 当前光标样式

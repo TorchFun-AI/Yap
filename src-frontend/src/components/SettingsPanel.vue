@@ -379,7 +379,7 @@ function getLogLevelClass(level: string): string {
 }
 
 // 监听标签切换，自动连接/断开
-watch(activeTab, (newTab, oldTab) => {
+watch(activeTab, (newTab) => {
   if (newTab === 'debug' && !isLogConnected.value) {
     connectLogs()
   }

@@ -129,6 +129,7 @@ export class SignalController {
     asrModelId?: string
     contextEnabled?: boolean
     contextCount?: number
+    autoInputMode?: string
   }): void {
     if (this.ws?.readyState !== WebSocket.OPEN) return
     this.ws.send(JSON.stringify({
