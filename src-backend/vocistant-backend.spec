@@ -34,6 +34,11 @@ a = Analysis(
         'mlx.nn',
         'mlx_audio',
         'mlx_audio.transcribe',
+        # mlx_audio 模型子模块 (PyInstaller 静态导入支持)
+        'mlx_audio.stt',
+        'mlx_audio.stt.models',
+        'mlx_audio.stt.models.whisper',
+        'mlx_audio.stt.models.funasr',
         # Silero VAD
         'silero_vad',
         # PyTorch (required by silero-vad)
@@ -60,9 +65,23 @@ a = Analysis(
         'numpy',
         # HTTP client
         'httpx',
+        'httpcore',
         'anyio',
-        # Hugging Face
+        # Hugging Face 子模块
         'huggingface_hub',
+        'huggingface_hub.hf_api',
+        'huggingface_hub.file_download',
+        'huggingface_hub._snapshot_download',
+        'huggingface_hub.utils',
+        'filelock',
+        # OpenAI 客户端
+        'openai',
+        'openai._client',
+        # macOS 框架
+        'Quartz',
+        'Quartz.CoreGraphics',
+        'objc',
+        'Foundation',
         # Other
         'tiktoken',
         'tiktoken_ext',

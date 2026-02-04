@@ -4,6 +4,7 @@ Coordinates VAD, ASR, and LLM correction/translation engines for real-time voice
 """
 
 import logging
+import subprocess
 import time
 import numpy as np
 from .vad_engine import VADEngine
@@ -73,7 +74,6 @@ class AudioPipeline:
 
     def _copy_to_clipboard(self, text: str) -> bool:
         """Copy text to system clipboard using pbcopy (macOS)."""
-        import subprocess
         try:
             process = subprocess.Popen(
                 ['pbcopy'],

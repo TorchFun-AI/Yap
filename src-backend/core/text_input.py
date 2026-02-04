@@ -7,6 +7,8 @@ Supports Chinese and typewriter effect.
 import logging
 import time
 
+import Quartz
+
 logger = logging.getLogger(__name__)
 
 
@@ -15,7 +17,6 @@ class TextInput:
 
     def __init__(self):
         self.is_initialized = False
-        self._cg = None
         self._source = None
 
     def initialize(self) -> None:
@@ -23,40 +24,64 @@ class TextInput:
         if self.is_initialized:
             return
 
-        try:
-            import Quartz
-            self._cg = Quartz
-            # Create event source
-            self._source = Quartz.CGEventSourceCreate(
-                Quartz.kCGEventSourceStateHIDSystemState
+        # Create event source
+        self._source = Quartz.CGEventSourceCreate(
+            Quartz.kCGEventSourceStateHIDSystemState
+        )
+
+        # Check if event source creation succeeded
+        if self._source is None:
+            logger.error(
+                "[TEXT_INPUT] CGEventSourceCreate returned None - "
+                "Accessibility permission likely denied"
             )
-            self.is_initialized = True
-            logger.info("Text input engine initialized with Quartz")
-        except ImportError:
-            logger.error("pyobjc-framework-Quartz not installed")
-            raise
+            raise PermissionError(
+                "Failed to create event source. "
+                "Accessibility permission may be denied."
+            )
+
+        logger.info(f"[TEXT_INPUT] Event source created: {self._source}")
+        self.is_initialized = True
+        logger.info("[TEXT_INPUT] Text input engine initialized with Quartz")
 
     def _input_char(self, char: str) -> bool:
         """Input a single character using CGEvent."""
         try:
-            # Create a keyboard event
-            event = self._cg.CGEventCreateKeyboardEvent(self._source, 0, True)
+            # Check if source is valid
+            if self._source is None:
+                logger.error("[TEXT_INPUT] Event source is None, cannot input char")
+                return False
+
+            # Create a keyboard event (key down)
+            event = Quartz.CGEventCreateKeyboardEvent(self._source, 0, True)
+            if event is None:
+                logger.error(
+                    f"[TEXT_INPUT] CGEventCreateKeyboardEvent (key down) "
+                    f"returned None for '{char}'"
+                )
+                return False
 
             # Set the Unicode string
-            self._cg.CGEventKeyboardSetUnicodeString(
-                event, len(char), char
-            )
+            Quartz.CGEventKeyboardSetUnicodeString(event, len(char), char)
 
-            # Post the event
-            self._cg.CGEventPost(self._cg.kCGHIDEventTap, event)
+            # Post the key down event
+            Quartz.CGEventPost(Quartz.kCGHIDEventTap, event)
 
             # Key up event
-            event_up = self._cg.CGEventCreateKeyboardEvent(self._source, 0, False)
-            self._cg.CGEventPost(self._cg.kCGHIDEventTap, event_up)
+            event_up = Quartz.CGEventCreateKeyboardEvent(self._source, 0, False)
+            if event_up is None:
+                logger.error(
+                    f"[TEXT_INPUT] CGEventCreateKeyboardEvent (key up) "
+                    f"returned None for '{char}'"
+                )
+                return False
 
+            Quartz.CGEventPost(Quartz.kCGHIDEventTap, event_up)
+
+            logger.debug(f"[TEXT_INPUT] Posted event for char '{char}'")
             return True
         except Exception as e:
-            logger.error(f"Failed to input char '{char}': {e}")
+            logger.error(f"[TEXT_INPUT] Failed to input char '{char}': {e}")
             return False
 
     def input_text(self, text: str, interval: float = 0) -> bool:
@@ -71,24 +96,29 @@ class TextInput:
             True if successful, False otherwise
         """
         if not text:
-            logger.warning("Empty text, skipping input")
+            logger.warning("[TEXT_INPUT] Empty text, skipping input")
             return False
 
         if not self.is_initialized:
             self.initialize()
 
+        logger.info(f"[TEXT_INPUT] Starting input of {len(text)} characters")
+
         try:
-            for char in text:
+            for i, char in enumerate(text):
                 if not self._input_char(char):
+                    logger.error(
+                        f"[TEXT_INPUT] Input failed at position {i}, char '{char}'"
+                    )
                     return False
                 if interval > 0:
                     time.sleep(interval)
 
-            logger.info(f"Text input successful: '{text}'")
+            logger.info(f"[TEXT_INPUT] Input completed successfully: '{text}'")
             return True
 
         except Exception as e:
-            logger.error(f"Text input failed: {e}")
+            logger.error(f"[TEXT_INPUT] Text input failed with exception: {e}")
             return False
 
     def input_text_instant(self, text: str) -> bool:
@@ -103,5 +133,4 @@ class TextInput:
         """Shutdown the text input engine."""
         self.is_initialized = False
         self._source = None
-        self._cg = None
-        logger.info("Text input engine shutdown")
+        logger.info("[TEXT_INPUT] Text input engine shutdown")

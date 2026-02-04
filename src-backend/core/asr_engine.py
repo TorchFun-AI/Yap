@@ -14,6 +14,10 @@ import asyncio
 
 import numpy as np
 
+# MLX Audio 模型 - 静态导入以支持 PyInstaller 打包
+from mlx_audio.stt.models.whisper import Model as WhisperModel
+from mlx_audio.stt.models.funasr import Model as FunASRModel
+
 logger = logging.getLogger(__name__)
 
 # 默认模型 ID
@@ -108,11 +112,9 @@ class ASREngine:
             logger.info(f"Loading {self.model_type} model: {model_path}")
 
             if self.model_type == "whisper":
-                from mlx_audio.stt.models.whisper import Model
-                self.model = Model.from_pretrained(model_path)
+                self.model = WhisperModel.from_pretrained(model_path)
             else:
-                from mlx_audio.stt.models.funasr import Model
-                self.model = Model.from_pretrained(model_path, fix_mistral_regex=True)
+                self.model = FunASRModel.from_pretrained(model_path, fix_mistral_regex=True)
 
             self.is_initialized = True
             logger.info(f"{self.model_type} model loaded successfully")

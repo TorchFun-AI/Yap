@@ -11,6 +11,8 @@ from pathlib import Path
 from typing import List, Dict, Optional
 import threading
 
+from huggingface_hub import snapshot_download
+
 logger = logging.getLogger(__name__)
 
 # HuggingFace 默认缓存目录
@@ -85,8 +87,6 @@ class ModelManager:
     def download_model(self, model_id: str, on_progress=None) -> Dict:
         """从 Hugging Face 下载 MLX 格式模型到默认缓存目录"""
         try:
-            from huggingface_hub import snapshot_download
-
             # 设置 hf-mirror 镜像
             os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 
