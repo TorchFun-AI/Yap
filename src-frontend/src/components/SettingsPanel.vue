@@ -42,6 +42,13 @@ const asrLanguageOptions = computed(() => [
   { value: 'yue', label: t('asrLanguages.yue') },
 ])
 
+// 动态生成输出方式选项
+const autoInputModeOptions = computed(() => [
+  { value: 'input', label: t('settings.autoInputMode.input') },
+  { value: 'clipboard', label: t('settings.autoInputMode.clipboard') },
+  { value: 'none', label: t('settings.autoInputMode.none') },
+])
+
 // 动态生成翻译语言选项
 const translateLanguageOptions = computed(() => [
   { value: '', label: t('translateLanguages.none') },
@@ -467,6 +474,20 @@ onMounted(() => {
               @update:value="appState.setAsrLanguage"
               :disabled="isRecording"
               :options="asrLanguageOptions"
+              size="small"
+              class="config-select"
+              :dropdown-style="{ background: '#2c2c2e' }"
+            />
+          </div>
+
+          <!-- Output Mode -->
+          <div class="config-item">
+            <span class="config-label">{{ t('settings.autoInputMode.label') }}</span>
+            <a-select
+              :value="appState.autoInputMode"
+              @update:value="appState.setAutoInputMode"
+              :disabled="isRecording"
+              :options="autoInputModeOptions"
               size="small"
               class="config-select"
               :dropdown-style="{ background: '#2c2c2e' }"

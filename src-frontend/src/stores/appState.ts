@@ -12,6 +12,9 @@ function notifySettingsChanged() {
 
 export type AppStatus = 'idle' | 'starting' | 'listening' | 'transcribing' | 'correcting' | 'translating' | 'speaking' | 'error'
 
+// 输出方式类型
+export type AutoInputMode = 'input' | 'clipboard' | 'none'
+
 // localStorage keys
 const STORAGE_KEYS = {
   asrLanguage: 'app-asr-language',
@@ -31,6 +34,8 @@ const STORAGE_KEYS = {
   asrModelId: 'app-asr-model-id',
   // 快捷键配置
   openSettingsShortcut: 'app-open-settings-shortcut',
+  // 输出方式配置
+  autoInputMode: 'app-auto-input-mode',
 }
 
 // 快捷键配置类型
@@ -70,6 +75,9 @@ function loadSettings() {
   // 快捷键配置
   const savedOpenSettingsShortcut = localStorage.getItem(STORAGE_KEYS.openSettingsShortcut)
 
+  // 输出方式配置
+  const savedAutoInputMode = localStorage.getItem(STORAGE_KEYS.autoInputMode)
+
   return {
     asrLanguage: savedAsrLang || RECORDING_DEFAULT_LANGUAGE,
     targetLanguage: savedTargetLang || '',
@@ -90,6 +98,8 @@ function loadSettings() {
     openSettingsShortcut: savedOpenSettingsShortcut
       ? JSON.parse(savedOpenSettingsShortcut)
       : DEFAULT_OPEN_SETTINGS_SHORTCUT,
+    // 输出方式配置
+    autoInputMode: (savedAutoInputMode as 'input' | 'clipboard' | 'none') || 'input',
   }
 }
 
@@ -149,6 +159,9 @@ export const useAppState = defineStore('appState', () => {
 
   // 快捷键配置
   const openSettingsShortcut = ref<ShortcutConfig>(savedSettings.openSettingsShortcut)
+
+  // 输出方式配置
+  const autoInputMode = ref<AutoInputMode>(savedSettings.autoInputMode)
 
   const isConnected = computed(() => connectionStatus.value === 'connected')
 
@@ -359,6 +372,14 @@ export const useAppState = defineStore('appState', () => {
     notifySettingsChanged()
   }
 
+  // 输出方式配置 setter
+  function setAutoInputMode(mode: AutoInputMode) {
+    autoInputMode.value = mode
+    localStorage.setItem(STORAGE_KEYS.autoInputMode, mode)
+    syncConfigToBackend()
+    notifySettingsChanged()
+  }
+
   // 同步 LLM 配置到后端
   function syncLlmConfigToBackend() {
     if (isConnected.value) {
@@ -382,6 +403,7 @@ export const useAppState = defineStore('appState', () => {
         asrModelId: asrModelId.value || undefined,
         contextEnabled: contextEnabled.value,
         contextCount: contextCount.value,
+        autoInputMode: autoInputMode.value,
       })
     }
   }
@@ -418,6 +440,7 @@ export const useAppState = defineStore('appState', () => {
     if (settings.llmTemperature !== undefined) llmTemperature.value = settings.llmTemperature
     if (settings.asrModelId !== undefined) asrModelId.value = settings.asrModelId
     if (settings.openSettingsShortcut !== undefined) openSettingsShortcut.value = settings.openSettingsShortcut
+    if (settings.autoInputMode !== undefined) autoInputMode.value = settings.autoInputMode
   }
 
   return {
@@ -450,6 +473,8 @@ export const useAppState = defineStore('appState', () => {
     asrModelId,
     // 快捷键配置
     openSettingsShortcut,
+    // 输出方式配置
+    autoInputMode,
     // 方法
     setStatus,
     setConnectionStatus,
@@ -477,6 +502,8 @@ export const useAppState = defineStore('appState', () => {
     setAsrModelId,
     // 快捷键配置方法
     setOpenSettingsShortcut,
+    // 输出方式配置方法
+    setAutoInputMode,
     syncLlmConfigToBackend,
     reset,
     reloadFromStorage,

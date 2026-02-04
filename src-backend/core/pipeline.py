@@ -41,21 +41,24 @@ class AudioPipeline:
         # Context-aware correction config
         self._context_enabled = True
         self._context_count = 3
+        # Output mode config
+        self._auto_input_mode = 'input'  # 'input', 'clipboard', 'none'
         # History store for context
         self.history_store = HistoryStore()
         # Streaming ASR engine for real-time transcription
         self._streaming_asr: StreamingASREngine = None
 
-    def set_config(self, correction_enabled: bool = True, target_language: str = None, asr_language: str = None, asr_model_id: str = None, context_enabled: bool = True, context_count: int = 3):
+    def set_config(self, correction_enabled: bool = True, target_language: str = None, asr_language: str = None, asr_model_id: str = None, context_enabled: bool = True, context_count: int = 3, auto_input_mode: str = 'input'):
         """Set runtime configuration for correction and translation."""
         self._correction_enabled = correction_enabled
         self._target_language = target_language if target_language else None
         self._asr_language = asr_language if asr_language else None
         self._context_enabled = context_enabled
         self._context_count = context_count
+        self._auto_input_mode = auto_input_mode if auto_input_mode else 'input'
         if asr_model_id:
             self.asr.set_model_id(asr_model_id)
-        logger.info(f"Pipeline config: asr_language={asr_language}, correction={correction_enabled}, target_language={target_language}, context_enabled={context_enabled}, context_count={context_count}")
+        logger.info(f"Pipeline config: asr_language={asr_language}, correction={correction_enabled}, target_language={target_language}, context_enabled={context_enabled}, context_count={context_count}, auto_input_mode={auto_input_mode}")
 
     def _emit_status(self, status: str, **kwargs):
         """Emit status update."""
@@ -67,6 +70,21 @@ class AudioPipeline:
         logger.info(f"[STREAMING] _emit_partial called: {text[:30]}...")
         if self._on_status:
             self._on_status({"type": "transcription_partial", "text": text})
+
+    def _copy_to_clipboard(self, text: str) -> bool:
+        """Copy text to system clipboard using pbcopy (macOS)."""
+        import subprocess
+        try:
+            process = subprocess.Popen(
+                ['pbcopy'],
+                stdin=subprocess.PIPE,
+                env={'LANG': 'en_US.UTF-8'}
+            )
+            process.communicate(text.encode('utf-8'))
+            return process.returncode == 0
+        except Exception as e:
+            logger.error(f"Failed to copy to clipboard: {e}")
+            return False
 
     def initialize(self) -> None:
         """Initialize all pipeline components."""
@@ -220,9 +238,14 @@ class AudioPipeline:
                     "is_final": True,
                 }
 
-                # Step 4: Input text at cursor position
-                self._emit_status("inputting", text=current_text)
-                self.text_input.input_text_typewriter(current_text)
+                # Step 4: Output based on auto_input_mode
+                if self._auto_input_mode == 'input':
+                    self._emit_status("inputting", text=current_text)
+                    self.text_input.input_text_typewriter(current_text)
+                elif self._auto_input_mode == 'clipboard':
+                    self._emit_status("copying", text=current_text)
+                    self._copy_to_clipboard(current_text)
+                # 'none' mode: no automatic action
 
                 # Step 5: Save to history for future context
                 self.history_store.add(

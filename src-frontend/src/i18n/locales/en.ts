@@ -45,6 +45,13 @@ export default {
       save: 'Save',
       invalid: 'Invalid shortcut',
     },
+    // Output Mode Settings
+    autoInputMode: {
+      label: 'Output Mode',
+      input: 'Auto Input',
+      clipboard: 'Copy to Clipboard',
+      none: 'Recognition Only',
+    },
   },
 
   // Floating Ball Actions

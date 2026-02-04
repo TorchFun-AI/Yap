@@ -45,6 +45,13 @@ export default {
       save: '保存',
       invalid: '无效的快捷键',
     },
+    // 输出方式设置
+    autoInputMode: {
+      label: '输出方式',
+      input: '自动输入',
+      clipboard: '复制到剪贴板',
+      none: '仅识别',
+    },
   },
 
   // 悬浮球操作项
