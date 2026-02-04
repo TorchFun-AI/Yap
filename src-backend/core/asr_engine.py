@@ -212,6 +212,7 @@ class WhisperStreamingASR(StreamingASREngine):
         self.language = language
         self._audio_buffer = []
         self._lock = threading.Lock()
+        self._model_lock = threading.Lock()  # 保护 GPU 模型访问
         self._partial_result: Optional[str] = None
         self._finalized = False
         self._worker_thread: Optional[threading.Thread] = None
@@ -241,7 +242,10 @@ class WhisperStreamingASR(StreamingASREngine):
 
             try:
                 combined = np.concatenate(buffer_copy)
-                result = self.model.generate(combined, language=self.language)
+                with self._model_lock:
+                    if self._stop_event.is_set():
+                        break
+                    result = self.model.generate(combined, language=self.language)
                 text = result.text if hasattr(result, 'text') else str(result)
                 if text and text.strip():
                     new_result = text.strip()
@@ -294,7 +298,8 @@ class WhisperStreamingASR(StreamingASREngine):
             combined = np.concatenate(self._audio_buffer)
 
         try:
-            result = self.model.generate(combined, language=self.language)
+            with self._model_lock:
+                result = self.model.generate(combined, language=self.language)
             text = result.text if hasattr(result, 'text') else str(result)
             return text.strip() if text else (self._partial_result or "")
         except Exception as e:
@@ -325,6 +330,7 @@ class FunASRStreamingASR(StreamingASREngine):
         self.language = language
         self._audio_buffer = []
         self._lock = threading.Lock()
+        self._model_lock = threading.Lock()  # 保护 GPU 模型访问
         self._partial_result: Optional[str] = None
         self._finalized = False
         self._worker_thread: Optional[threading.Thread] = None
@@ -352,7 +358,10 @@ class FunASRStreamingASR(StreamingASREngine):
 
             try:
                 combined = np.concatenate(buffer_copy)
-                result = self.model.generate(combined, language=self.language)
+                with self._model_lock:
+                    if self._stop_event.is_set():
+                        break
+                    result = self.model.generate(combined, language=self.language)
                 text = result.text if hasattr(result, 'text') else str(result)
                 if text and text.strip():
                     new_result = text.strip()
@@ -398,7 +407,8 @@ class FunASRStreamingASR(StreamingASREngine):
             combined = np.concatenate(self._audio_buffer)
 
         try:
-            result = self.model.generate(combined, language=self.language)
+            with self._model_lock:
+                result = self.model.generate(combined, language=self.language)
             text = result.text if hasattr(result, 'text') else str(result)
             return text.strip() if text else (self._partial_result or "")
         except Exception as e:
