@@ -463,6 +463,9 @@ export const useAppState = defineStore('appState', () => {
     if (settings.asrModelId !== undefined) asrModelId.value = settings.asrModelId
     if (settings.openSettingsShortcut !== undefined) openSettingsShortcut.value = settings.openSettingsShortcut
     if (settings.autoInputMode !== undefined) autoInputMode.value = settings.autoInputMode
+
+    // 同步配置到后端
+    syncConfigToBackend()
   }
 
   return {

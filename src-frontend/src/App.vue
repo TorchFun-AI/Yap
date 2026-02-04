@@ -237,6 +237,8 @@ const toggleRecording = () => {
       llmModel: appState.llmModel,
       llmTimeout: appState.llmTimeout,
       llmTemperature: appState.llmTemperature,
+      // 输出方式
+      autoInputMode: appState.autoInputMode,
     })
     appState.setStatus(AppStatus.STARTING)
   }

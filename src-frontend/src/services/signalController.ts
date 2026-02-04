@@ -105,6 +105,8 @@ export class SignalController {
     llmModel?: string
     llmTimeout?: number
     llmTemperature?: number
+    // 输出方式
+    autoInputMode?: string
   } = {}): void {
     if (this.ws?.readyState !== WebSocket.OPEN) return
     this.ws.send(JSON.stringify({
