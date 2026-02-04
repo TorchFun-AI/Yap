@@ -16,6 +16,7 @@ export default {
       voice: 'Processing',
       llm: 'LLM',
       asr: 'ASR',
+      debug: 'Debug',
     },
     // LLM Settings
     llm: {
@@ -51,6 +52,17 @@ export default {
       input: 'Auto Input',
       clipboard: 'Copy to Clipboard',
       none: 'Recognition Only',
+    },
+    // Debug Settings
+    debug: {
+      connect: 'Connect',
+      disconnect: 'Disconnect',
+      clear: 'Clear',
+      autoScroll: 'Auto Scroll',
+      filterLevel: 'Log Level',
+      connected: 'Connected',
+      disconnected: 'Disconnected',
+      noLogs: 'No logs',
     },
   },
 

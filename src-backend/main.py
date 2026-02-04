@@ -15,6 +15,7 @@ from core.recording_session import RecordingSession
 from core.audio_capture import AudioCapture
 from core.waveform_analyzer import register_waveform_callback, unregister_waveform_callback
 from core.model_manager import ModelManager
+from core.log_handler import setup_websocket_logging, register_log_client, unregister_log_client
 
 # Configure logging
 logging.basicConfig(
@@ -28,6 +29,7 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """Application lifespan handler for startup/shutdown events."""
     print("Vocistant backend starting...")
+    setup_websocket_logging()
     yield
     print("Vocistant backend shutting down...")
 
@@ -189,6 +191,32 @@ async def waveform_websocket(websocket: WebSocket):
     finally:
         # Unregister callback
         unregister_waveform_callback(on_waveform)
+
+
+@app.websocket("/ws/logs")
+async def logs_websocket(websocket: WebSocket):
+    """WebSocket endpoint for real-time log streaming."""
+    await websocket.accept()
+    import asyncio
+
+    queue: asyncio.Queue = asyncio.Queue(maxsize=100)
+
+    # Register client and get buffered logs
+    buffered_logs = register_log_client(queue)
+
+    try:
+        # Send buffered logs first
+        for log_entry in buffered_logs:
+            await websocket.send_json(log_entry)
+
+        # Stream new logs
+        while True:
+            log_entry = await queue.get()
+            await websocket.send_json(log_entry)
+    except WebSocketDisconnect:
+        print("Log client disconnected")
+    finally:
+        unregister_log_client(queue)
 
 
 def main():

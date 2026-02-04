@@ -4,6 +4,7 @@ import { invoke } from '@tauri-apps/api/core'
 import type { ConnectionStatus } from '@/services/signalController'
 import { signalController } from '@/services/signalController'
 import { RECORDING_DEFAULT_LANGUAGE } from '@/constants'
+import type { LogEntry } from '@/services/logController'
 
 // 通知其他窗口设置已变更
 function notifySettingsChanged() {
@@ -162,6 +163,11 @@ export const useAppState = defineStore('appState', () => {
 
   // 输出方式配置
   const autoInputMode = ref<AutoInputMode>(savedSettings.autoInputMode)
+
+  // 日志状态
+  const logs = ref<LogEntry[]>([])
+  const logLevelFilter = ref<string[]>(['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'])
+  const LOG_MAX_SIZE = 500
 
   const isConnected = computed(() => connectionStatus.value === 'connected')
 
@@ -380,6 +386,22 @@ export const useAppState = defineStore('appState', () => {
     notifySettingsChanged()
   }
 
+  // 日志方法
+  function addLog(entry: LogEntry) {
+    logs.value.push(entry)
+    if (logs.value.length > LOG_MAX_SIZE) {
+      logs.value.shift()
+    }
+  }
+
+  function clearLogs() {
+    logs.value = []
+  }
+
+  function setLogLevelFilter(levels: string[]) {
+    logLevelFilter.value = levels
+  }
+
   // 同步 LLM 配置到后端
   function syncLlmConfigToBackend() {
     if (isConnected.value) {
@@ -504,6 +526,12 @@ export const useAppState = defineStore('appState', () => {
     setOpenSettingsShortcut,
     // 输出方式配置方法
     setAutoInputMode,
+    // 日志状态和方法
+    logs,
+    logLevelFilter,
+    addLog,
+    clearLogs,
+    setLogLevelFilter,
     syncLlmConfigToBackend,
     reset,
     reloadFromStorage,

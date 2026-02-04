@@ -16,6 +16,7 @@ export default {
       voice: '输入处理',
       llm: 'LLM',
       asr: 'ASR',
+      debug: '调试',
     },
     // LLM 设置
     llm: {
@@ -51,6 +52,17 @@ export default {
       input: '自动输入',
       clipboard: '复制到剪贴板',
       none: '仅识别',
+    },
+    // 调试设置
+    debug: {
+      connect: '连接',
+      disconnect: '断开',
+      clear: '清空',
+      autoScroll: '自动滚动',
+      filterLevel: '日志级别',
+      connected: '已连接',
+      disconnected: '未连接',
+      noLogs: '暂无日志',
     },
   },
 

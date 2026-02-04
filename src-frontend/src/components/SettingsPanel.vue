@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { invoke } from '@tauri-apps/api/core'
 import { useAppState } from '@/stores/appState'
 import { AppStatus } from '@/constants'
 import { setLocale, getLocale } from '@/i18n'
+import { logController } from '@/services/logController'
 
 const { t } = useI18n()
 
@@ -20,7 +21,7 @@ const emit = defineEmits<{
 const appState = useAppState()
 
 // 当前选中的设置标签
-const activeTab = ref<'general' | 'voice' | 'llm' | 'asr'>('general')
+const activeTab = ref<'general' | 'voice' | 'llm' | 'asr' | 'debug'>('general')
 
 // 录音中时禁用配置修改
 const isRecording = computed(() =>
@@ -310,6 +311,83 @@ onMounted(() => {
   fetchLlmModels()
   loadShortcutSettings()
 })
+
+// 调试日志相关
+const logContainerRef = ref<HTMLElement | null>(null)
+const autoScroll = ref(true)
+const isLogConnected = ref(false)
+let unsubscribeLog: (() => void) | null = null
+
+// 日志级别选项
+const logLevelOptions = [
+  { value: 'DEBUG', label: 'DEBUG' },
+  { value: 'INFO', label: 'INFO' },
+  { value: 'WARNING', label: 'WARNING' },
+  { value: 'ERROR', label: 'ERROR' },
+  { value: 'CRITICAL', label: 'CRITICAL' },
+]
+
+// 过滤后的日志
+const filteredLogs = computed(() => {
+  return appState.logs.filter(log => appState.logLevelFilter.includes(log.level))
+})
+
+// 连接日志 WebSocket
+function connectLogs() {
+  if (isLogConnected.value) return
+
+  unsubscribeLog = logController.onLog((entry) => {
+    appState.addLog(entry)
+    if (autoScroll.value) {
+      nextTick(() => {
+        scrollToBottom()
+      })
+    }
+  })
+
+  logController.connect()
+  isLogConnected.value = true
+}
+
+// 断开日志 WebSocket
+function disconnectLogs() {
+  if (unsubscribeLog) {
+    unsubscribeLog()
+    unsubscribeLog = null
+  }
+  logController.disconnect()
+  isLogConnected.value = false
+}
+
+// 滚动到底部
+function scrollToBottom() {
+  if (logContainerRef.value) {
+    logContainerRef.value.scrollTop = logContainerRef.value.scrollHeight
+  }
+}
+
+// 获取日志级别对应的颜色类
+function getLogLevelClass(level: string): string {
+  const classes: Record<string, string> = {
+    DEBUG: 'log-debug',
+    INFO: 'log-info',
+    WARNING: 'log-warning',
+    ERROR: 'log-error',
+    CRITICAL: 'log-critical',
+  }
+  return classes[level] || ''
+}
+
+// 监听标签切换，自动连接/断开
+watch(activeTab, (newTab, oldTab) => {
+  if (newTab === 'debug' && !isLogConnected.value) {
+    connectLogs()
+  }
+})
+
+onUnmounted(() => {
+  disconnectLogs()
+})
 </script>
 
 <template>
@@ -372,6 +450,20 @@ onMounted(() => {
             <line x1="8" y1="23" x2="16" y2="23" />
           </svg>
           <span>{{ t('settings.tabs.asr') }}</span>
+        </div>
+        <div
+          class="tab-item"
+          :class="{ active: activeTab === 'debug' }"
+          @click="activeTab = 'debug'"
+        >
+          <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+            <line x1="8" y1="6" x2="16" y2="6" />
+            <line x1="8" y1="10" x2="16" y2="10" />
+            <line x1="8" y1="14" x2="12" y2="14" />
+          </svg>
+          <span>{{ t('settings.tabs.debug') }}</span>
         </div>
       </div>
 
@@ -664,6 +756,62 @@ onMounted(() => {
                 </a-button>
                 <span v-else class="downloaded-badge">✓</span>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 调试设置 -->
+        <div v-show="activeTab === 'debug'" class="tab-pane debug-pane">
+          <!-- 控制栏 -->
+          <div class="debug-controls">
+            <div class="control-left">
+              <span class="connection-status" :class="{ connected: isLogConnected }">
+                {{ isLogConnected ? t('settings.debug.connected') : t('settings.debug.disconnected') }}
+              </span>
+            </div>
+            <div class="control-right">
+              <a-button v-if="!isLogConnected" size="small" @click="connectLogs">
+                {{ t('settings.debug.connect') }}
+              </a-button>
+              <a-button v-else size="small" @click="disconnectLogs">
+                {{ t('settings.debug.disconnect') }}
+              </a-button>
+              <a-button size="small" @click="appState.clearLogs">
+                {{ t('settings.debug.clear') }}
+              </a-button>
+            </div>
+          </div>
+
+          <!-- 过滤选项 -->
+          <div class="debug-filters">
+            <span class="filter-label">{{ t('settings.debug.filterLevel') }}:</span>
+            <a-checkbox-group
+              :value="appState.logLevelFilter"
+              @update:value="appState.setLogLevelFilter"
+              :options="logLevelOptions"
+              size="small"
+            />
+            <div class="auto-scroll-toggle">
+              <span>{{ t('settings.debug.autoScroll') }}</span>
+              <a-switch v-model:checked="autoScroll" size="small" />
+            </div>
+          </div>
+
+          <!-- 日志列表 -->
+          <div ref="logContainerRef" class="log-container">
+            <div v-if="filteredLogs.length === 0" class="no-logs">
+              {{ t('settings.debug.noLogs') }}
+            </div>
+            <div
+              v-for="(log, index) in filteredLogs"
+              :key="index"
+              class="log-entry"
+              :class="getLogLevelClass(log.level)"
+            >
+              <span class="log-time">{{ log.timestamp.split('T')[1]?.split('.')[0] || '' }}</span>
+              <span class="log-level">{{ log.level }}</span>
+              <span class="log-logger">{{ log.logger }}</span>
+              <span class="log-message">{{ log.message }}</span>
             </div>
           </div>
         </div>
@@ -1041,6 +1189,130 @@ onMounted(() => {
 }
 
 :deep(.ant-btn) {
+  font-size: 11px !important;
+}
+
+/* 调试面板样式 */
+.debug-pane {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 8px;
+}
+
+.debug-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.control-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.control-right {
+  display: flex;
+  gap: 6px;
+}
+
+.connection-status {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(255, 77, 79, 0.2);
+  color: #ff4d4f;
+}
+
+.connection-status.connected {
+  background: rgba(82, 196, 26, 0.2);
+  color: #52c41a;
+}
+
+.debug-filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 11px;
+}
+
+.filter-label {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.auto-scroll-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.log-container {
+  flex: 1;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  padding: 8px;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+  font-size: 11px;
+  min-height: 150px;
+}
+
+.no-logs {
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+  padding: 20px;
+}
+
+.log-entry {
+  display: flex;
+  gap: 8px;
+  padding: 2px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.log-time {
+  color: rgba(255, 255, 255, 0.4);
+  flex-shrink: 0;
+}
+
+.log-level {
+  width: 55px;
+  flex-shrink: 0;
+  font-weight: 500;
+}
+
+.log-logger {
+  color: rgba(255, 255, 255, 0.5);
+  flex-shrink: 0;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.log-message {
+  color: rgba(255, 255, 255, 0.8);
+  word-break: break-all;
+}
+
+.log-debug .log-level { color: #8c8c8c; }
+.log-info .log-level { color: #1890ff; }
+.log-warning .log-level { color: #faad14; }
+.log-error .log-level { color: #ff4d4f; }
+.log-critical .log-level { color: #ff4d4f; font-weight: bold; }
+
+:deep(.ant-checkbox-group) {
+  display: flex;
+  gap: 4px;
+}
+
+:deep(.ant-checkbox-wrapper) {
+  color: rgba(255, 255, 255, 0.7) !important;
   font-size: 11px !important;
 }
 </style>
