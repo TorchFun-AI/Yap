@@ -108,7 +108,15 @@ export const useAppState = defineStore('appState', () => {
   const retryCount = ref(0)
   const currentTranscript = ref('')
   const originalTranscript = ref('')
-  const partialTranscript = ref('')
+  const partialTranscript = ref('')        // 内部目标文本
+  const displayPartialText = ref('')       // 实际显示的文本
+  let typewriterTimer: number | null = null
+
+  // 打字机配置
+  const TYPEWRITER_BASE_INTERVAL = 50      // 基础打字间隔 (ms)
+  const TYPEWRITER_MIN_INTERVAL = 20       // 最小打字间隔 (ms)
+  const TYPEWRITER_TARGET_DURATION = 800   // 目标完成时间 (ms)
+
   const errorMessage = ref('')
 
   // 消息历史（最多保留 10 条）
@@ -162,12 +170,55 @@ export const useAppState = defineStore('appState', () => {
     if (original) {
       originalTranscript.value = original
     }
-    // 收到最终结果时清除 partial
+    // 清理打字机状态
+    stopTypewriter()
     partialTranscript.value = ''
+    displayPartialText.value = ''
   }
 
   function setPartialTranscript(text: string) {
     partialTranscript.value = text
+
+    // 只在文本变长时启用打字机效果
+    if (text.length > displayPartialText.value.length) {
+      startTypewriter()
+    } else {
+      // ASR 修正（文本变短或相同长度但内容不同）：直接更新显示
+      stopTypewriter()
+      displayPartialText.value = text
+    }
+  }
+
+  function startTypewriter() {
+    if (typewriterTimer !== null) return
+    typewriterTick()
+  }
+
+  function typewriterTick() {
+    const target = partialTranscript.value
+    const current = displayPartialText.value
+
+    if (current.length >= target.length) {
+      stopTypewriter()
+      return
+    }
+
+    // 动态计算打字速度，确保在下次 partial 到来前完成
+    const remaining = target.length - current.length
+    const interval = Math.max(
+      TYPEWRITER_MIN_INTERVAL,
+      Math.min(Math.floor(TYPEWRITER_TARGET_DURATION / remaining), TYPEWRITER_BASE_INTERVAL)
+    )
+
+    displayPartialText.value = target.slice(0, current.length + 1)
+    typewriterTimer = window.setTimeout(typewriterTick, interval)
+  }
+
+  function stopTypewriter() {
+    if (typewriterTimer !== null) {
+      clearTimeout(typewriterTimer)
+      typewriterTimer = null
+    }
   }
 
   // 添加最终结果到历史记录（只在收到 transcription 消息时调用）
@@ -339,7 +390,9 @@ export const useAppState = defineStore('appState', () => {
     status.value = 'idle'
     currentTranscript.value = ''
     originalTranscript.value = ''
+    stopTypewriter()
     partialTranscript.value = ''
+    displayPartialText.value = ''
     errorMessage.value = ''
     waveformLevels.value = [0, 0, 0, 0, 0]
   }
@@ -374,7 +427,7 @@ export const useAppState = defineStore('appState', () => {
     isConnected,
     currentTranscript,
     originalTranscript,
-    partialTranscript,
+    partialTranscript: displayPartialText,  // 对外暴露显示文本而非目标文本
     errorMessage,
     isActive,
     asrLanguage,
