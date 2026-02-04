@@ -3,22 +3,17 @@ WebSocket Log Handler for real-time log streaming.
 """
 
 import logging
-import threading
-from typing import Dict, List
+import asyncio
+from typing import Dict, Tuple
 from datetime import datetime
 from collections import deque
 
 # 全局历史缓冲区（用于新连接时发送历史日志）
 _log_history: deque = deque(maxlen=100)
-_log_history_lock = threading.Lock()
 
-# 客户端缓冲区（每个客户端独立的待发送队列）
-_client_buffers: Dict[int, deque] = {}
-_client_buffers_lock = threading.Lock()
+# 客户端信息：(asyncio.Queue, event_loop)
+_clients: Dict[int, Tuple[asyncio.Queue, asyncio.AbstractEventLoop]] = {}
 _client_id_counter = 0
-
-# 每个客户端的缓冲区最大大小
-_client_buffer_max_size = 500
 
 
 class WebSocketLogHandler(logging.Handler):
@@ -34,47 +29,34 @@ class WebSocketLogHandler(logging.Handler):
         }
 
         # 添加到全局历史缓冲区
-        with _log_history_lock:
-            _log_history.append(log_entry)
+        _log_history.append(log_entry)
 
-        # 添加到每个客户端的缓冲区
-        with _client_buffers_lock:
-            for client_id, buffer in _client_buffers.items():
-                if len(buffer) < _client_buffer_max_size:
-                    buffer.append(log_entry)
+        # 通过事件循环安全地将日志放入每个客户端的异步队列
+        for client_id, (q, loop) in list(_clients.items()):
+            try:
+                loop.call_soon_threadsafe(q.put_nowait, log_entry)
+            except (RuntimeError, asyncio.QueueFull):
+                pass
 
 
-def register_log_client() -> tuple[int, list]:
-    """Register a new WebSocket client and return client_id and history logs."""
+def register_log_client(loop: asyncio.AbstractEventLoop) -> tuple[int, asyncio.Queue, list]:
+    """Register a new WebSocket client with its event loop."""
     global _client_id_counter
 
-    with _client_buffers_lock:
-        _client_id_counter += 1
-        client_id = _client_id_counter
-        _client_buffers[client_id] = deque(maxlen=_client_buffer_max_size)
+    _client_id_counter += 1
+    client_id = _client_id_counter
+    client_queue: asyncio.Queue = asyncio.Queue(maxsize=500)
+    _clients[client_id] = (client_queue, loop)
 
     # 返回历史日志副本
-    with _log_history_lock:
-        history = list(_log_history)
+    history = list(_log_history)
 
-    return client_id, history
+    return client_id, client_queue, history
 
 
 def unregister_log_client(client_id: int):
     """Unregister a WebSocket client."""
-    with _client_buffers_lock:
-        _client_buffers.pop(client_id, None)
-
-
-def get_pending_logs(client_id: int) -> list:
-    """Get and clear pending logs for a client."""
-    with _client_buffers_lock:
-        buffer = _client_buffers.get(client_id)
-        if buffer:
-            logs = list(buffer)
-            buffer.clear()
-            return logs
-    return []
+    _clients.pop(client_id, None)
 
 
 def setup_websocket_logging():
