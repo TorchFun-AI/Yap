@@ -7,7 +7,7 @@ import logging
 import time
 import numpy as np
 from .vad_engine import VADEngine
-from .asr_engine import ASREngine
+from .asr_engine import ASREngine, StreamingASREngine
 from .llm_corrector import LLMCorrector
 from .llm_translator import LLMTranslator
 from .text_input import TextInput
@@ -30,7 +30,7 @@ class AudioPipeline:
         self.audio_buffer = bytearray()
         # Pre-buffer to capture audio before VAD detects speech (100ms at 16kHz, 16-bit = 3200 bytes)
         self._pre_buffer = bytearray()
-        self._pre_buffer_size = 32 * 200  # 200ms * 16000Hz * 2 bytes
+        self._pre_buffer_size = 32 * 300  # 300ms * 16000Hz * 2 bytes
         self._speech_just_started = False
         self.is_initialized = False
         self._on_status = on_status
@@ -43,6 +43,8 @@ class AudioPipeline:
         self._context_count = 3
         # History store for context
         self.history_store = HistoryStore()
+        # Streaming ASR engine for real-time transcription
+        self._streaming_asr: StreamingASREngine = None
 
     def set_config(self, correction_enabled: bool = True, target_language: str = None, asr_language: str = None, asr_model_id: str = None, context_enabled: bool = True, context_count: int = 3):
         """Set runtime configuration for correction and translation."""
@@ -62,6 +64,7 @@ class AudioPipeline:
 
     def _emit_partial(self, text: str):
         """Emit partial transcription result."""
+        logger.info(f"[STREAMING] _emit_partial called: {text[:30]}...")
         if self._on_status:
             self._on_status({"type": "transcription_partial", "text": text})
 
@@ -103,9 +106,23 @@ class AudioPipeline:
             if speech_just_started:
                 self.audio_buffer.extend(self._pre_buffer)
                 self._speech_just_started = True
+                # 创建流式ASR引擎，设置回调
+                self._streaming_asr = self.asr.create_streaming_engine()
+                self._streaming_asr.set_on_partial(self._emit_partial)
+                # 将 pre-buffer 转换为 float32 并输入流式引擎
+                if self._pre_buffer:
+                    pre_audio = np.frombuffer(bytes(self._pre_buffer), dtype=np.int16)
+                    pre_float32 = pre_audio.astype(np.float32) / 32768.0
+                    self._streaming_asr.feed_chunk(pre_float32)
             self.audio_buffer.extend(audio_bytes)
             buffer_duration = len(self.audio_buffer) / 32000
             self._emit_status("speaking", buffer_duration=buffer_duration)
+
+            # 将当前音频块输入流式引擎
+            if self._streaming_asr:
+                audio_int16 = np.frombuffer(audio_bytes, dtype=np.int16)
+                audio_float32 = audio_int16.astype(np.float32) / 32768.0
+                self._streaming_asr.feed_chunk(audio_float32)
         else:
             # Maintain rolling pre-buffer when not in speech
             if not self._speech_just_started:
@@ -126,23 +143,19 @@ class AudioPipeline:
             audio_duration = len(self.audio_buffer) / 32000
             logger.info(f"[TIMING] Speech ended, audio_duration={audio_duration:.2f}s")
 
-            audio_int16 = np.frombuffer(bytes(self.audio_buffer), dtype=np.int16)
-            audio_float32 = audio_int16.astype(np.float32) / 32768.0
             self.audio_buffer.clear()
             self._pre_buffer.clear()
             self._speech_just_started = False
             self.vad.reset()
 
-            # Step 1: ASR Transcription (streaming)
+            # Step 1: ASR Transcription (使用流式引擎)
             self._emit_status("transcribing", audio_duration=audio_duration)
             t_asr_start = time.perf_counter()
-            # Use configured language, 'auto' means let model detect
-            asr_lang = None if self._asr_language == 'auto' else self._asr_language
-            transcription = self.asr.transcribe_stream(
-                audio_float32,
-                language=asr_lang,
-                on_partial=self._emit_partial
-            )
+
+            transcription = None
+            if self._streaming_asr:
+                transcription = self._streaming_asr.finalize()
+                self._streaming_asr = None
             t_asr_end = time.perf_counter()
             logger.info(f"[TIMING] ASR completed in {(t_asr_end - t_asr_start)*1000:.0f}ms, text='{transcription}'")
 
@@ -231,6 +244,9 @@ class AudioPipeline:
         self._pre_buffer.clear()
         self._speech_just_started = False
         self.vad.reset()
+        if self._streaming_asr:
+            self._streaming_asr.reset()
+            self._streaming_asr = None
 
     def update_llm_config(self, config: dict) -> None:
         """Update LLM configuration dynamically."""

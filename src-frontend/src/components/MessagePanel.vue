@@ -14,9 +14,9 @@ const recentMessages = computed(() =>
   appState.messageHistory.slice(0, props.maxCount || 3)
 )
 
-// 是否正在转录（显示 partial）
+// 是否显示流式转录（说话或转录时都显示）
 const isTranscribing = computed(() =>
-  appState.status === 'transcribing' && appState.partialTranscript
+  (appState.status === 'speaking' || appState.status === 'transcribing') && appState.partialTranscript
 )
 
 // 格式化时长显示
