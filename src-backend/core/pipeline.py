@@ -4,14 +4,12 @@ Coordinates VAD, ASR, and LLM correction/translation engines for real-time voice
 """
 
 import logging
-import subprocess
 import time
 import numpy as np
 from .vad_engine import VADEngine
 from .asr_engine import ASREngine, StreamingASREngine
 from .llm_corrector import LLMCorrector
 from .llm_translator import LLMTranslator
-from .text_input import TextInput
 from .config import Config
 from .history_store import HistoryStore
 
@@ -27,7 +25,6 @@ class AudioPipeline:
         self.asr = ASREngine()
         self.llm = LLMCorrector() if self.config.llm_enabled else None
         self.translator = LLMTranslator() if self.config.llm_enabled else None
-        self.text_input = TextInput()
         self.audio_buffer = bytearray()
         # Pre-buffer to capture audio before VAD detects speech (100ms at 16kHz, 16-bit = 3200 bytes)
         self._pre_buffer = bytearray()
@@ -72,20 +69,6 @@ class AudioPipeline:
         if self._on_status:
             self._on_status({"type": "transcription_partial", "text": text})
 
-    def _copy_to_clipboard(self, text: str) -> bool:
-        """Copy text to system clipboard using pbcopy (macOS)."""
-        try:
-            process = subprocess.Popen(
-                ['pbcopy'],
-                stdin=subprocess.PIPE,
-                env={'LANG': 'en_US.UTF-8'}
-            )
-            process.communicate(text.encode('utf-8'))
-            return process.returncode == 0
-        except Exception as e:
-            logger.error(f"Failed to copy to clipboard: {e}")
-            return False
-
     def initialize(self) -> None:
         """Initialize all pipeline components."""
         if self.is_initialized:
@@ -96,7 +79,6 @@ class AudioPipeline:
             self.llm.initialize()
         if self.translator:
             self.translator.initialize()
-        self.text_input.initialize()
         self.history_store.initialize()
         self.is_initialized = True
         logger.info("Pipeline initialized")
@@ -238,13 +220,22 @@ class AudioPipeline:
                     "is_final": True,
                 }
 
-                # Step 4: Output based on auto_input_mode
+                # Step 4: Output based on auto_input_mode (always via Tauri)
                 if self._auto_input_mode == 'input':
                     self._emit_status("inputting", text=current_text)
-                    self.text_input.input_text_typewriter(current_text)
+                    if self._on_status:
+                        self._on_status({
+                            "type": "text_input_request",
+                            "text": current_text,
+                            "typewriter": True
+                        })
                 elif self._auto_input_mode == 'clipboard':
                     self._emit_status("copying", text=current_text)
-                    self._copy_to_clipboard(current_text)
+                    if self._on_status:
+                        self._on_status({
+                            "type": "clipboard_request",
+                            "text": current_text
+                        })
                 # 'none' mode: no automatic action
 
                 # Step 5: Save to history for future context

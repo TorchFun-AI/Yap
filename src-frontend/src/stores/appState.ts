@@ -6,11 +6,6 @@ import { signalController } from '@/services/signalController'
 import { RECORDING_DEFAULT_LANGUAGE } from '@/constants'
 import type { LogEntry } from '@/services/logController'
 
-// 通知其他窗口设置已变更
-function notifySettingsChanged() {
-  invoke('broadcast_settings_changed', { settings: {} }).catch(() => {})
-}
-
 export type AppStatus = 'idle' | 'starting' | 'listening' | 'transcribing' | 'correcting' | 'translating' | 'speaking' | 'error'
 
 // 输出方式类型
@@ -417,7 +412,8 @@ export const useAppState = defineStore('appState', () => {
 
   // 同步配置到后端（已连接时发送）
   function syncConfigToBackend() {
-    if (isConnected.value) {
+    // 只有当 signalController 真正连接时才发送
+    if (signalController.isConnected) {
       signalController.updateConfig({
         language: asrLanguage.value,
         correctionEnabled: correctionEnabled.value,
@@ -428,6 +424,28 @@ export const useAppState = defineStore('appState', () => {
         autoInputMode: autoInputMode.value,
       })
     }
+  }
+
+  // 通知其他窗口设置已变更（传递当前设置值，避免 localStorage 缓存问题）
+  function notifySettingsChanged() {
+    invoke('broadcast_settings_changed', {
+      settings: {
+        asrLanguage: asrLanguage.value,
+        targetLanguage: targetLanguage.value,
+        correctionEnabled: correctionEnabled.value,
+        contextEnabled: contextEnabled.value,
+        contextCount: contextCount.value,
+        contextMaxHistory: contextMaxHistory.value,
+        llmApiKey: llmApiKey.value,
+        llmApiBase: llmApiBase.value,
+        llmModel: llmModel.value,
+        llmTimeout: llmTimeout.value,
+        llmTemperature: llmTemperature.value,
+        asrModelId: asrModelId.value,
+        openSettingsShortcut: openSettingsShortcut.value,
+        autoInputMode: autoInputMode.value,
+      }
+    }).catch(() => {})
   }
 
   function reset() {

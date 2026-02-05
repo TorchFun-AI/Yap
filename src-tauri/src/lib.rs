@@ -192,14 +192,77 @@ fn close_settings_window(app: tauri::AppHandle) -> Result<(), String> {
 
 /// 广播设置变更事件到所有窗口
 #[tauri::command]
-fn broadcast_settings_changed(app: tauri::AppHandle) -> Result<(), String> {
-    app.emit("settings-changed", ()).map_err(|e| e.to_string())
+fn broadcast_settings_changed(app: tauri::AppHandle, settings: serde_json::Value) -> Result<(), String> {
+    app.emit("settings-changed", settings).map_err(|e| e.to_string())
 }
 
 /// 打开开发者工具
 #[tauri::command]
 fn open_devtools(webview_window: tauri::WebviewWindow) {
     webview_window.open_devtools();
+}
+
+/// 复制文本到剪贴板（macOS）
+#[tauri::command]
+fn copy_to_clipboard(text: String) -> Result<(), String> {
+    use std::process::{Command, Stdio};
+    use std::io::Write;
+
+    let mut child = Command::new("pbcopy")
+        .stdin(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("Failed to spawn pbcopy: {}", e))?;
+
+    if let Some(stdin) = child.stdin.as_mut() {
+        stdin.write_all(text.as_bytes())
+            .map_err(|e| format!("Failed to write to pbcopy: {}", e))?;
+    }
+
+    child.wait()
+        .map_err(|e| format!("pbcopy failed: {}", e))?;
+
+    Ok(())
+}
+
+/// 模拟键盘输入文本（macOS）
+#[tauri::command]
+fn input_text(text: String, typewriter: Option<bool>) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        use core_graphics::event::{CGEvent, CGEventTapLocation};
+        use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
+
+        let source = CGEventSource::new(CGEventSourceStateID::HIDSystemState)
+            .map_err(|_| "Failed to create event source")?;
+
+        let use_typewriter = typewriter.unwrap_or(true);
+
+        for ch in text.chars() {
+            let event = CGEvent::new_keyboard_event(source.clone(), 0, true)
+                .map_err(|_| "Failed to create keyboard event")?;
+
+            // Encode char to UTF-16 (max 2 code units for surrogate pairs)
+            let mut buf = [0u16; 2];
+            let encoded = ch.encode_utf16(&mut buf);
+            event.set_string_from_utf16_unchecked(encoded);
+            event.post(CGEventTapLocation::HID);
+
+            let event_up = CGEvent::new_keyboard_event(source.clone(), 0, false)
+                .map_err(|_| "Failed to create key up event")?;
+            event_up.post(CGEventTapLocation::HID);
+
+            if use_typewriter {
+                std::thread::sleep(std::time::Duration::from_millis(16));
+            }
+        }
+        Ok(())
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = text;
+        let _ = typewriter;
+        Err("Text input not supported on this platform".to_string())
+    }
 }
 
 /// 解析修饰键字符串为 Modifiers
@@ -418,7 +481,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![greet, save_window_position, load_window_position, set_window_bounds, set_ignore_cursor_events, get_cursor_position, open_settings_window, close_settings_window, broadcast_settings_changed, get_shortcut_settings, update_shortcut, open_devtools])
+        .invoke_handler(tauri::generate_handler![greet, save_window_position, load_window_position, set_window_bounds, set_ignore_cursor_events, get_cursor_position, open_settings_window, close_settings_window, broadcast_settings_changed, get_shortcut_settings, update_shortcut, open_devtools, input_text, copy_to_clipboard])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app, event| {

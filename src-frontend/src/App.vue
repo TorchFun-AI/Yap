@@ -270,8 +270,14 @@ onMounted(async () => {
   })
 
   // 监听设置变更事件（实时同步）
-  unlistenSettingsChanged = await listen('settings-changed', () => {
-    appState.reloadFromStorage()
+  unlistenSettingsChanged = await listen<Record<string, any>>('settings-changed', (event) => {
+    // 从事件数据中获取设置值，避免 localStorage 缓存问题
+    if (event.payload && Object.keys(event.payload).length > 0) {
+      appState.applySettings(event.payload)
+    } else {
+      // 兼容旧版本：如果没有传递设置值，从 localStorage 读取
+      appState.reloadFromStorage()
+    }
     // 重新加载界面语言
     const savedLocale = localStorage.getItem('app-locale') as 'zh' | 'en' | null
     if (savedLocale) {
@@ -378,6 +384,16 @@ onMounted(async () => {
       }
     } else if (data.type === WsMessageType.ERROR) {
       appState.setError(data.message)
+    } else if (data.type === WsMessageType.TEXT_INPUT_REQUEST) {
+      // Tauri 端输入请求
+      if (data.text) {
+        invoke('input_text', { text: data.text, typewriter: data.typewriter ?? true })
+      }
+    } else if (data.type === WsMessageType.CLIPBOARD_REQUEST) {
+      // Tauri 端剪贴板请求
+      if (data.text) {
+        invoke('copy_to_clipboard', { text: data.text })
+      }
     }
   })
 

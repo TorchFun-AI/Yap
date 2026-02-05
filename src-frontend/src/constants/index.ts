@@ -74,6 +74,8 @@ export const WsMessageType = {
   STATUS: 'status',
   ERROR: 'error',
   CONTROL: 'control',
+  TEXT_INPUT_REQUEST: 'text_input_request',
+  CLIPBOARD_REQUEST: 'clipboard_request',
 } as const
 
 // 后端状态映射
