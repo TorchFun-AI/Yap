@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useAppState } from '@/stores/appState'
@@ -31,6 +31,12 @@ const isExpanded = ref(false)
 const activeDropdown = ref<string | null>(null)
 const hoveredAction = ref<string | null>(null)
 
+// 消息面板自动隐藏相关状态
+const messagesVisible = ref(false)
+const messagesPanelHovered = ref(false)
+let autoHideTimer: number | null = null
+const AUTO_HIDE_DELAY = 3000 // 自动隐藏延迟（毫秒）
+
 const iconColor = computed(() => BallIconColorMap[appState.status] || BallIconColorMap[AppStatus.IDLE])
 const isActive = computed(() => appState.isActive)
 const isStarting = computed(() => appState.status === AppStatus.STARTING)
@@ -39,6 +45,61 @@ const isCorrecting = computed(() => appState.status === AppStatus.CORRECTING)
 const isTranslating = computed(() => appState.status === AppStatus.TRANSLATING)
 const waveformLevels = computed(() => appState.waveformLevels)
 const recentMessages = computed(() => appState.messageHistory)
+
+// 重置自动隐藏计时器
+const resetAutoHideTimer = () => {
+  if (autoHideTimer) {
+    clearTimeout(autoHideTimer)
+    autoHideTimer = null
+  }
+  if (!messagesPanelHovered.value) {
+    autoHideTimer = window.setTimeout(() => {
+      messagesVisible.value = false
+    }, AUTO_HIDE_DELAY)
+  }
+}
+
+// 显示消息面板
+const showMessages = () => {
+  messagesVisible.value = true
+  resetAutoHideTimer()
+}
+
+// 消息面板 hover 处理
+const onMessagesPanelEnter = () => {
+  messagesPanelHovered.value = true
+  if (autoHideTimer) {
+    clearTimeout(autoHideTimer)
+    autoHideTimer = null
+  }
+}
+
+const onMessagesPanelLeave = () => {
+  messagesPanelHovered.value = false
+  resetAutoHideTimer()
+}
+
+// 监听消息历史变化，有新消息时显示面板
+watch(recentMessages, (newVal, oldVal) => {
+  if (newVal.length > oldVal.length) {
+    showMessages()
+  }
+}, { deep: true })
+
+// 监听实时转录，有内容时显示面板
+watch(() => appState.partialTranscript, (newVal) => {
+  if (newVal) {
+    showMessages()
+  }
+})
+
+// 组件卸载时清理计时器
+onUnmounted(() => {
+  if (autoHideTimer) {
+    clearTimeout(autoHideTimer)
+    autoHideTimer = null
+  }
+})
 
 // 是否显示声波（仅在 listening/speaking 状态）
 const showWaveform = computed(() =>
@@ -183,7 +244,7 @@ const onActionHover = (actionId: string | null) => {
 defineExpose({
   isExpanded,
   hasDropdown: computed(() => activeDropdown.value !== null),
-  hasMessages: computed(() => recentMessages.value.length > 0),
+  hasMessages: computed(() => messagesVisible.value && recentMessages.value.length > 0),
 })
 
 // 图标 SVG 路径
@@ -367,7 +428,12 @@ const iconPaths: Record<string, string> = {
     </transition>
 
     <!-- 消息记录面板 -->
-    <MessagePanel :visible="isExpanded" :max-count="3" />
+    <MessagePanel
+      :visible="isExpanded && messagesVisible"
+      :max-count="3"
+      @mouseenter="onMessagesPanelEnter"
+      @mouseleave="onMessagesPanelLeave"
+    />
   </div>
 </template>
 
