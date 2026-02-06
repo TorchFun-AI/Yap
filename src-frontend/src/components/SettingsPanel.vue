@@ -254,6 +254,7 @@ const downloadProgress = ref<Record<string, {
   downloaded: string
   total: string
   speed: string
+  eta?: string
   isFileCount?: boolean
 }>>({})
 
@@ -316,6 +317,7 @@ async function downloadModel(modelId: string) {
           downloaded: progress.downloaded || '0 B',
           total: progress.total || 'unknown',
           speed: progress.speed || '0 B/s',
+          eta: progress.eta || '--:--',
         }
         setTimeout(checkProgress, 1000)
       } else if (progress.status === 'completed') {
@@ -900,7 +902,7 @@ onUnmounted(() => {
                     />
                     <div class="progress-info">
                       <span>{{ downloadProgress[model.id]?.downloaded || '0 B' }} / {{ downloadProgress[model.id]?.total || '?' }}</span>
-                      <span>{{ downloadProgress[model.id]?.speed || '0 B/s' }}</span>
+                      <span>{{ downloadProgress[model.id]?.speed || '0 B/s' }} | {{ downloadProgress[model.id]?.eta || '--:--' }}</span>
                     </div>
                   </div>
                   <a-button
@@ -993,8 +995,8 @@ onUnmounted(() => {
   top: calc(100% + 8px);
   left: 24px;
   z-index: 100;
-  width: 420px;
-  height: 340px;
+  width: 540px;
+  height: 420px;
   display: flex;
   flex-direction: column;
 }
@@ -1005,8 +1007,8 @@ onUnmounted(() => {
   left: 0;
   width: 100%;
   height: 100%;
-  min-width: 448px;
-  min-height: 348px;
+  min-width: 540px;
+  min-height: 420px;
   margin: 0;
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1286,8 +1288,8 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  min-width: 180px;
-  width: 180px;
+  min-width: 220px;
+  width: 220px;
 }
 
 .download-progress :deep(.ant-progress) {

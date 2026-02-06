@@ -37,6 +37,22 @@ def format_speed(speed_bytes: float) -> str:
     return f"{speed_bytes:.0f} B/s"
 
 
+def format_eta(seconds: float) -> str:
+    """格式化剩余时间"""
+    if seconds < 0 or seconds > 86400 * 7:  # 超过7天显示未知
+        return "--:--"
+    if seconds < 60:
+        return f"{int(seconds)}s"
+    elif seconds < 3600:
+        mins = int(seconds // 60)
+        secs = int(seconds % 60)
+        return f"{mins}m {secs}s"
+    else:
+        hours = int(seconds // 3600)
+        mins = int((seconds % 3600) // 60)
+        return f"{hours}h {mins}m"
+
+
 # HuggingFace 默认缓存目录
 HF_CACHE_DIR = Path.home() / ".cache" / "huggingface" / "hub"
 
@@ -165,6 +181,7 @@ class ModelManager:
                     "downloaded": "0 B",
                     "total": format_size(estimated_size) if estimated_size else "unknown",
                     "speed": "0 B/s",
+                    "eta": "--:--",
                 }
 
             # 启动进度监控线程
@@ -201,6 +218,10 @@ class ModelManager:
                     progress = (current_size / estimated_size * 100) if estimated_size > 0 else 0
                     progress = min(progress, 99)  # 下载完成前最多显示 99%
 
+                    # 计算剩余时间
+                    remaining_bytes = estimated_size - current_size
+                    eta = remaining_bytes / speed if speed > 0 and estimated_size > 0 else -1
+
                     with self._download_lock:
                         self._download_progress[model_id] = {
                             "status": "downloading",
@@ -208,6 +229,7 @@ class ModelManager:
                             "downloaded": format_size(current_size),
                             "total": format_size(estimated_size) if estimated_size else "unknown",
                             "speed": format_speed(speed),
+                            "eta": format_eta(eta),
                         }
 
                     stop_monitor.wait(1)  # 每秒更新一次
