@@ -72,10 +72,10 @@ async function copyToClipboard(id: number, text: string) {
 <style scoped>
 .messages-panel {
   position: absolute;
-  top: 100%;
+  top: calc(50% + 28px);
   left: 0;
-  right: 0;
-  margin-top: 8px;
+  width: 100%;
+  min-width: 200px;
   padding: 8px 12px;
   background: rgba(30, 30, 32, 0.7);
   backdrop-filter: blur(20px);
@@ -85,7 +85,7 @@ async function copyToClipboard(id: number, text: string) {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
   max-height: 120px;
   overflow-y: auto;
-  z-index: 15;  /* 在操作面板(20)之下，但下拉菜单(100)会在其之上 */
+  z-index: 15;
 }
 
 .message-item {

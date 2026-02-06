@@ -445,15 +445,15 @@ const iconPaths: Record<string, string> = {
           </div>
         </div>
       </transition>
-    </div>
 
-    <!-- 消息记录面板 -->
-    <MessagePanel
-      :visible="isExpanded && messagesVisible"
-      :max-count="3"
-      @mouseenter="onMessagesPanelEnter"
-      @mouseleave="onMessagesPanelLeave"
-    />
+      <!-- 消息记录面板 -->
+      <MessagePanel
+        :visible="isExpanded && messagesVisible"
+        :max-count="3"
+        @mouseenter="onMessagesPanelEnter"
+        @mouseleave="onMessagesPanelLeave"
+      />
+    </div>
   </div>
 </template>
 
