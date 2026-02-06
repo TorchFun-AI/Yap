@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, nextTick, onMounted, onUnmounted } from 'vue'
 import { getCurrentWindow, availableMonitors } from '@tauri-apps/api/window'
 import { invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
@@ -406,6 +406,13 @@ onMounted(async () => {
     appState.setWaveformLevels(levels)
   })
   waveformController.connect(waveformUrl)
+
+  // 启动时自动展开操作区（带动画）
+  nextTick(() => {
+    if (floatingBallRef.value) {
+      floatingBallRef.value.isExpanded = true
+    }
+  })
 })
 
 onUnmounted(() => {
