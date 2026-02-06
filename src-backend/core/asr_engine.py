@@ -35,8 +35,8 @@ def _get_local_model_path(model_id: str) -> Optional[str]:
     if not cache_path.exists():
         return None
 
-    # 获取最新的 snapshot
-    snapshots = list(cache_path.iterdir())
+    # 获取最新的 snapshot（过滤掉隐藏文件和非目录项）
+    snapshots = [p for p in cache_path.iterdir() if p.is_dir() and not p.name.startswith('.')]
     if not snapshots:
         return None
 
