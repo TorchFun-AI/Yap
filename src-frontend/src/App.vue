@@ -20,8 +20,11 @@ import {
 } from '@/constants'
 import { setLocale } from '@/i18n'
 
+const PANEL_WIDTH = 200  // 操作面板宽度
+
 const appState = useAppState()
 const floatingBallRef = ref<InstanceType<typeof FloatingBallV2> | null>(null)
+const expandDirection = ref<'left' | 'right'>('right')
 let unlistenSettingsChanged: UnlistenFn | null = null
 let unlistenToggleRecording: UnlistenFn | null = null
 
@@ -72,36 +75,52 @@ const handleOpenSettingsShortcut = async (e: KeyboardEvent) => {
   }
 }
 
-// 球区域的边界（相对于窗口，悬浮球在左上角）
-const ballOnlyBounds = {
-  left: WINDOW_SHADOW,
-  top: WINDOW_SHADOW,
-  right: WINDOW_BALL_SIZE + WINDOW_SHADOW,
-  bottom: WINDOW_BALL_SIZE + WINDOW_SHADOW,
+// 球区域的边界（相对于窗口，悬浮球在窗口中间）
+const getBallOnlyBounds = () => {
+  return {
+    left: WINDOW_SHADOW + PANEL_WIDTH,
+    top: WINDOW_SHADOW,
+    right: WINDOW_SHADOW + PANEL_WIDTH + WINDOW_BALL_SIZE,
+    bottom: WINDOW_BALL_SIZE + WINDOW_SHADOW,
+  }
 }
 
-// 展开时的边界（操作面板在悬浮球右侧水平展开）
-const expandedBounds = {
-  left: WINDOW_SHADOW,
-  top: WINDOW_SHADOW,
-  right: WINDOW_BALL_SIZE + 200 + WINDOW_SHADOW,
-  bottom: WINDOW_BALL_SIZE + WINDOW_SHADOW,
+// 展开时的边界（操作面板展开）
+const getExpandedBounds = () => {
+  if (expandDirection.value === 'left') {
+    // 左侧展开：操作面板在悬浮球左侧
+    return {
+      left: WINDOW_SHADOW,
+      top: WINDOW_SHADOW,
+      right: WINDOW_SHADOW + PANEL_WIDTH + WINDOW_BALL_SIZE,
+      bottom: WINDOW_BALL_SIZE + WINDOW_SHADOW,
+    }
+  }
+  // 右侧展开：操作面板在悬浮球右侧
+  return {
+    left: WINDOW_SHADOW + PANEL_WIDTH,
+    top: WINDOW_SHADOW,
+    right: WINDOW_SHADOW + PANEL_WIDTH + WINDOW_BALL_SIZE + PANEL_WIDTH,
+    bottom: WINDOW_BALL_SIZE + WINDOW_SHADOW,
+  }
 }
 
 // 展开且有下拉菜单时的边界
-const expandedWithDropdownBounds = {
-  left: WINDOW_SHADOW,
-  top: WINDOW_SHADOW,
-  right: WINDOW_BALL_SIZE + 200 + WINDOW_SHADOW,
-  bottom: WINDOW_BALL_SIZE + WINDOW_SHADOW + 110,
+const getExpandedWithDropdownBounds = () => {
+  const base = getExpandedBounds()
+  return {
+    ...base,
+    bottom: base.bottom + 110,
+  }
 }
 
 // 展开且有消息记录时的边界
-const expandedWithMessagesBounds = {
-  left: WINDOW_SHADOW,
-  top: WINDOW_SHADOW,
-  right: WINDOW_BALL_SIZE + 200 + WINDOW_SHADOW,
-  bottom: WINDOW_BALL_SIZE + WINDOW_SHADOW + 140,
+const getExpandedWithMessagesBounds = () => {
+  const base = getExpandedBounds()
+  return {
+    ...base,
+    bottom: base.bottom + 140,
+  }
 }
 
 let pollTimer: number | null = null
@@ -171,13 +190,13 @@ const pollMousePosition = async () => {
     const hasDropdown = floatingBallRef.value?.hasDropdown ?? false
     const hasMessages = floatingBallRef.value?.hasMessages ?? false
 
-    let bounds = ballOnlyBounds
+    let bounds = getBallOnlyBounds()
     if (isExpanded && hasDropdown) {
-      bounds = expandedWithDropdownBounds
+      bounds = getExpandedWithDropdownBounds()
     } else if (isExpanded && hasMessages) {
-      bounds = expandedWithMessagesBounds
+      bounds = getExpandedWithMessagesBounds()
     } else if (isExpanded) {
-      bounds = expandedBounds
+      bounds = getExpandedBounds()
     }
 
     // 检测是否在区域内（增加一些边距使点击更容易）
@@ -214,6 +233,45 @@ const stopPolling = () => {
     clearInterval(pollTimer)
     pollTimer = null
   }
+}
+
+// 更新展开方向（方向改变时先收起面板再展开）
+const updateExpandDirection = async () => {
+  try {
+    const appWindow = getCurrentWindow()
+    const pos = await appWindow.outerPosition()
+    const scale = await appWindow.scaleFactor()
+    const monitors = await availableMonitors()
+
+    if (monitors.length > 0) {
+      const primary = monitors[0]!
+      const screenWidth = primary.size.width / primary.scaleFactor
+      const windowX = pos.x / scale
+
+      // 计算悬浮球中心在屏幕上的位置（悬浮球在窗口中间）
+      const ballCenterX = windowX + WINDOW_SHADOW + PANEL_WIDTH + WINDOW_BALL_SIZE / 2
+      const newDirection = ballCenterX > screenWidth / 2 ? 'left' : 'right'
+
+      // 如果方向改变且面板已展开，先收起再展开
+      if (newDirection !== expandDirection.value && floatingBallRef.value?.isExpanded) {
+        floatingBallRef.value.isExpanded = false
+        await new Promise(resolve => setTimeout(resolve, 200)) // 等待收起动画
+        expandDirection.value = newDirection
+        await new Promise(resolve => setTimeout(resolve, 50))
+        floatingBallRef.value.isExpanded = true
+      } else {
+        expandDirection.value = newDirection
+      }
+    }
+  } catch (e) {
+    console.error('Failed to update expand direction:', e)
+  }
+}
+
+// 处理拖动结束
+const handleDragEnd = () => {
+  // 延迟更新展开方向，等待拖动完成
+  setTimeout(updateExpandDirection, 100)
 }
 
 // 录音控制
@@ -287,11 +345,27 @@ onMounted(async () => {
 
   const savedPosition = await loadWindowPosition()
 
-  // 窗口大小：悬浮球 + 操作面板 + 下拉菜单/消息面板空间
-  const totalWidth = WINDOW_BALL_SIZE + 200 + WINDOW_SHADOW * 2
+  // 窗口大小：两侧操作面板空间 + 悬浮球 + 阴影
+  // 悬浮球在窗口中间，两侧都有 PANEL_WIDTH 的空间
+  const totalWidth = PANEL_WIDTH + WINDOW_BALL_SIZE + PANEL_WIDTH + WINDOW_SHADOW * 2
   const totalHeight = WINDOW_BALL_SIZE + WINDOW_SHADOW * 2 + 150
 
-  const { x, y } = await clampToScreen(savedPosition.x, savedPosition.y, totalWidth, totalHeight)
+  // 计算初始展开方向
+  const monitors = await availableMonitors()
+  if (monitors.length > 0) {
+    const primary = monitors[0]!
+    const screenWidth = primary.size.width / primary.scaleFactor
+    // 保存的位置是悬浮球在屏幕上的位置
+    const ballCenterX = savedPosition.x + WINDOW_BALL_SIZE / 2
+    expandDirection.value = ballCenterX > screenWidth / 2 ? 'left' : 'right'
+  }
+
+  // 窗口位置 = 悬浮球位置 - 悬浮球在窗口中的偏移
+  // 悬浮球在窗口中的位置：WINDOW_SHADOW + PANEL_WIDTH
+  const windowX = savedPosition.x - WINDOW_SHADOW - PANEL_WIDTH
+  const windowY = savedPosition.y - WINDOW_SHADOW
+
+  const { x, y } = await clampToScreen(windowX, windowY, totalWidth, totalHeight)
   await invoke('set_window_bounds', { x, y, width: totalWidth, height: totalHeight })
 
   // 初始状态启用鼠标穿透
@@ -307,13 +381,13 @@ onMounted(async () => {
     const hasDropdown = floatingBallRef.value?.hasDropdown ?? false
     const hasMessages = floatingBallRef.value?.hasMessages ?? false
 
-    let bounds = ballOnlyBounds
+    let bounds = getBallOnlyBounds()
     if (isExpanded && hasDropdown) {
-      bounds = expandedWithDropdownBounds
+      bounds = getExpandedWithDropdownBounds()
     } else if (isExpanded && hasMessages) {
-      bounds = expandedWithMessagesBounds
+      bounds = getExpandedWithMessagesBounds()
     } else if (isExpanded) {
-      bounds = expandedBounds
+      bounds = getExpandedBounds()
     }
 
     // 检测鼠标是否在可见区域内
@@ -437,7 +511,12 @@ onUnmounted(() => {
 <template>
   <div class="app-container">
     <div class="ball-wrapper">
-      <FloatingBallV2 ref="floatingBallRef" @action="handleAction" />
+      <FloatingBallV2
+        ref="floatingBallRef"
+        :expand-direction="expandDirection"
+        @action="handleAction"
+        @drag="handleDragEnd"
+      />
     </div>
   </div>
 </template>
@@ -447,16 +526,17 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
+  align-items: center;
   width: 100%;
   height: 100vh;
   box-sizing: border-box;
   padding: 24px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .ball-wrapper {
   display: flex;
-  justify-content: flex-start;
+  justify-content: center;
   flex-shrink: 0;
   position: relative;
 }

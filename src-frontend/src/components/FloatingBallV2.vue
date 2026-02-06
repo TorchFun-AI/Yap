@@ -16,9 +16,12 @@ interface ActionItem {
   toggle?: boolean // 是否为开关型按钮
 }
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   actions?: ActionItem[]
-}>()
+  expandDirection?: 'left' | 'right'
+}>(), {
+  expandDirection: 'right'
+})
 
 const emit = defineEmits<{
   click: []
@@ -274,6 +277,7 @@ const iconPaths: Record<string, string> = {
 <template>
   <div
     class="floating-ball-container"
+    :class="{ 'expand-left': props.expandDirection === 'left' }"
     @mouseenter="onMouseEnter"
     @mouseleave="onMouseLeave"
   >
@@ -391,55 +395,57 @@ const iconPaths: Record<string, string> = {
       <div v-if="!isExpanded && isActive" class="pulse-ring" :style="{ background: iconColor }" />
     </div>
 
-    <!-- 展开的操作面板（从左侧展开） -->
-    <transition name="panel-expand">
-      <div v-show="isExpanded" class="action-panel">
-        <div
-          v-for="(action, index) in actionItems"
-          :key="action.id"
-          class="action-item"
-          :style="{ transitionDelay: `${index * 50}ms` }"
-          @click="onActionClick(action)"
-          @mouseenter="onActionHover(action.id)"
-          @mouseleave="onActionHover(null)"
-        >
-          <div class="action-icon" :class="{
-            active: activeDropdown === action.id,
-            toggled: (action.id === 'correction' && selectedValues.correction) || (action.id === 'record' && isActive) || (action.id === 'translate' && selectedValues.translate !== ''),
-            disabled: action.id === 'record' && isRecordDisabled
-          }">
-            <svg viewBox="0 0 24 24" fill="currentColor">
-              <path :d="iconPaths[action.icon] || iconPaths.sparkles" />
-            </svg>
-          </div>
-
-          <!-- Tooltip -->
-          <transition name="tooltip-fade">
-            <div
-              v-if="hoveredAction === action.id && activeDropdown !== action.id"
-              class="tooltip"
-            >
-              {{ action.label }}
+    <!-- 展开的操作面板 -->
+    <div class="action-panel-wrapper">
+      <transition name="panel-expand">
+        <div v-show="isExpanded" class="action-panel">
+          <div
+            v-for="(action, index) in actionItems"
+            :key="action.id"
+            class="action-item"
+            :style="{ transitionDelay: `${index * 50}ms` }"
+            @click="onActionClick(action)"
+            @mouseenter="onActionHover(action.id)"
+            @mouseleave="onActionHover(null)"
+          >
+            <div class="action-icon" :class="{
+              active: activeDropdown === action.id,
+              toggled: (action.id === 'correction' && selectedValues.correction) || (action.id === 'record' && isActive) || (action.id === 'translate' && selectedValues.translate !== ''),
+              disabled: action.id === 'record' && isRecordDisabled
+            }">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path :d="iconPaths[action.icon] || iconPaths.sparkles" />
+              </svg>
             </div>
-          </transition>
 
-          <!-- Dropdown Menu -->
-          <transition name="dropdown-slide">
-            <div v-if="activeDropdown === action.id && action.options" class="dropdown-menu">
+            <!-- Tooltip -->
+            <transition name="tooltip-fade">
               <div
-                v-for="option in action.options"
-                :key="option.value"
-                class="dropdown-item"
-                :class="{ selected: selectedValues[action.id as keyof typeof selectedValues] === option.value }"
-                @click.stop="onOptionSelect(action.id, option.value)"
+                v-if="hoveredAction === action.id && activeDropdown !== action.id"
+                class="tooltip"
               >
-                {{ option.label }}
+                {{ action.label }}
               </div>
-            </div>
-          </transition>
+            </transition>
+
+            <!-- Dropdown Menu -->
+            <transition name="dropdown-slide">
+              <div v-if="activeDropdown === action.id && action.options" class="dropdown-menu">
+                <div
+                  v-for="option in action.options"
+                  :key="option.value"
+                  class="dropdown-item"
+                  :class="{ selected: selectedValues[action.id as keyof typeof selectedValues] === option.value }"
+                  @click.stop="onOptionSelect(action.id, option.value)"
+                >
+                  {{ option.label }}
+                </div>
+              </div>
+            </transition>
+          </div>
         </div>
-      </div>
-    </transition>
+      </transition>
+    </div>
 
     <!-- 消息记录面板 -->
     <MessagePanel
@@ -610,14 +616,26 @@ const iconPaths: Record<string, string> = {
   }
 }
 
-/* 操作面板 - 从右侧展开，尺寸更小 */
+/* 操作面板定位包装器 */
+.action-panel-wrapper {
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateX(-20px) translateY(-50%);
+}
+
+.expand-left .action-panel-wrapper {
+  left: 0;
+  transform: translateX(calc(-100% + 20px)) translateY(-50%);
+}
+
+/* 操作面板样式 */
 .action-panel {
   display: flex;
   align-items: center;
   height: 40px;
-  padding: 0 12px;
-  margin-left: -20px;
-  padding-left: 28px;
+  min-width: 180px;
+  padding: 0 12px 0 28px;
   background: rgba(45, 45, 48, 0.85);
   backdrop-filter: blur(25px);
   -webkit-backdrop-filter: blur(25px);
@@ -625,7 +643,16 @@ const iconPaths: Record<string, string> = {
   border-radius: 20px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
   gap: 8px;
-  z-index: 20;  /* 确保操作面板在消息面板之上 */
+  z-index: 20;
+  white-space: nowrap;
+  transform-origin: left center;
+}
+
+/* 左侧展开时的操作面板样式 */
+.expand-left .action-panel {
+  padding: 0 28px 0 12px;
+  flex-direction: row-reverse;
+  transform-origin: right center;
 }
 
 /* 操作项 */
@@ -751,7 +778,7 @@ const iconPaths: Record<string, string> = {
   font-size: 10px;
 }
 
-/* 面板展开动画 - 从左侧展开 */
+/* 面板展开动画 */
 .panel-expand-enter-active {
   animation: panelExpandIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
@@ -760,16 +787,23 @@ const iconPaths: Record<string, string> = {
   animation: panelExpandOut 0.2s ease-out;
 }
 
+/* 左侧展开时的动画 */
+.expand-left .panel-expand-enter-active {
+  animation: panelExpandInLeft 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.expand-left .panel-expand-leave-active {
+  animation: panelExpandOutLeft 0.2s ease-out;
+}
+
 @keyframes panelExpandIn {
   0% {
     opacity: 0;
     transform: scaleX(0);
-    transform-origin: left center;
   }
   100% {
     opacity: 1;
     transform: scaleX(1);
-    transform-origin: left center;
   }
 }
 
@@ -777,12 +811,32 @@ const iconPaths: Record<string, string> = {
   0% {
     opacity: 1;
     transform: scaleX(1);
-    transform-origin: left center;
   }
   100% {
     opacity: 0;
     transform: scaleX(0);
-    transform-origin: left center;
+  }
+}
+
+@keyframes panelExpandInLeft {
+  0% {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+@keyframes panelExpandOutLeft {
+  0% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scaleX(0);
   }
 }
 
