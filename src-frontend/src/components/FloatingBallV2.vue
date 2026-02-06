@@ -207,6 +207,19 @@ const onBallClick = () => {
   }
 }
 
+// 右键点击打开/关闭历史消息框
+const onBallContextMenu = () => {
+  if (!isExpanded.value) {
+    isExpanded.value = true
+  }
+  if (recentMessages.value.length > 0) {
+    messagesVisible.value = !messagesVisible.value
+    if (messagesVisible.value) {
+      resetAutoHideTimer()
+    }
+  }
+}
+
 const onActionClick = (action: ActionItem) => {
   if (action.options) {
     activeDropdown.value = activeDropdown.value === action.id ? null : action.id
@@ -269,6 +282,7 @@ const iconPaths: Record<string, string> = {
       class="main-button"
       :class="{ expanded: isExpanded }"
       @click="onBallClick"
+      @contextmenu.prevent="onBallContextMenu"
       @mousedown="onBallMouseDown"
       @mousemove="onBallMouseMove"
     >
