@@ -107,6 +107,24 @@ async def get_download_progress(model_id: str):
     return {"status": "not_found"}
 
 
+@app.delete("/api/models/{model_id:path}")
+async def delete_model(model_id: str):
+    """删除本地模型"""
+    result = model_manager.delete_model(model_id)
+    return result
+
+
+class VerifyRequest(BaseModel):
+    use_mirror: bool = True
+
+
+@app.get("/api/models/verify/{model_id:path}")
+async def verify_model(model_id: str, use_mirror: bool = True):
+    """校验模型完整性"""
+    result = model_manager.verify_model(model_id, use_mirror=use_mirror)
+    return result
+
+
 @app.websocket("/ws/audio")
 async def audio_websocket(websocket: WebSocket):
     """WebSocket endpoint for audio control via JSON messages."""

@@ -246,3 +246,68 @@ class ModelManager:
         if total > 1e9:
             return f"{total/1e9:.1f}GB"
         return f"{total/1e6:.0f}MB"
+
+    def delete_model(self, model_id: str) -> Dict:
+        """删除本地模型缓存
+
+        Args:
+            model_id: 模型 ID
+
+        Returns:
+            {"success": bool, "error": str (optional)}
+        """
+        import shutil
+
+        try:
+            cache_path = self._get_cache_path(model_id)
+            if not cache_path.exists():
+                return {"success": False, "error": "Model not found"}
+
+            shutil.rmtree(cache_path)
+            logger.info(f"Deleted model cache: {model_id}")
+            return {"success": True}
+        except Exception as e:
+            logger.error(f"Failed to delete model {model_id}: {e}")
+            return {"success": False, "error": str(e)}
+
+    def verify_model(self, model_id: str, use_mirror: bool = True) -> Dict:
+        """校验模型完整性（对比本地文件和远程文件列表）
+
+        Args:
+            model_id: 模型 ID
+            use_mirror: 是否使用 hf-mirror 镜像
+
+        Returns:
+            {"valid": bool, "missing": [], "extra": []}
+        """
+        try:
+            cache_path = self._get_cache_path(model_id)
+            if not cache_path.exists():
+                return {"valid": False, "missing": ["all"], "extra": []}
+
+            # 获取远程文件列表
+            endpoint = "https://hf-mirror.com" if use_mirror else None
+            api = HfApi(endpoint=endpoint)
+            remote_files = list(api.list_repo_tree(model_id, repo_type="model"))
+            remote_file_names = {f.path for f in remote_files if hasattr(f, 'path') and not f.path.endswith('/')}
+
+            # 获取本地文件列表（从 snapshots 目录）
+            snapshots_dir = cache_path / "snapshots"
+            local_file_names = set()
+            if snapshots_dir.exists():
+                for snapshot in snapshots_dir.iterdir():
+                    if snapshot.is_dir():
+                        for f in snapshot.rglob('*'):
+                            if f.is_file():
+                                rel_path = f.relative_to(snapshot)
+                                local_file_names.add(str(rel_path))
+
+            # 对比文件列表
+            missing = list(remote_file_names - local_file_names)
+            extra = list(local_file_names - remote_file_names)
+
+            valid = len(missing) == 0
+            return {"valid": valid, "missing": missing, "extra": extra}
+        except Exception as e:
+            logger.error(f"Failed to verify model {model_id}: {e}")
+            return {"valid": False, "error": str(e), "missing": [], "extra": []}

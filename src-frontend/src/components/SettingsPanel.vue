@@ -257,6 +257,10 @@ const downloadProgress = ref<Record<string, {
   isFileCount?: boolean
 }>>({})
 
+// 模型校验和删除状态
+const verifyingModels = ref<Set<string>>(new Set())
+const deletingModels = ref<Set<string>>(new Set())
+
 const API_BASE = 'http://127.0.0.1:8765'
 
 async function fetchLocalModels() {
@@ -340,6 +344,57 @@ function selectModel(modelId: string) {
   console.log('current asrModelId:', appState.asrModelId)
   appState.setAsrModelId(modelId)
   console.log('after set asrModelId:', appState.asrModelId)
+}
+
+async function deleteModel(modelId: string) {
+  if (deletingModels.value.has(modelId)) return
+
+  deletingModels.value.add(modelId)
+  try {
+    const res = await fetch(`${API_BASE}/api/models/${encodeURIComponent(modelId)}`, {
+      method: 'DELETE',
+    })
+    const data = await res.json()
+    if (data.success) {
+      message.success(t('settings.asr.deleteSuccess'))
+      // 如果删除的是当前选中的模型，清空选择
+      if (appState.asrModelId === modelId) {
+        appState.setAsrModelId('')
+      }
+      await fetchLocalModels()
+      await fetchAvailableModels()
+    } else {
+      message.error(data.error || t('settings.asr.deleteFailed'))
+    }
+  } catch (e) {
+    console.error('Failed to delete model:', e)
+    message.error(t('settings.asr.deleteFailed'))
+  } finally {
+    deletingModels.value.delete(modelId)
+  }
+}
+
+async function verifyModel(modelId: string) {
+  if (verifyingModels.value.has(modelId)) return
+
+  verifyingModels.value.add(modelId)
+  try {
+    const res = await fetch(
+      `${API_BASE}/api/models/verify/${encodeURIComponent(modelId)}?use_mirror=${appState.useHfMirror}`
+    )
+    const data = await res.json()
+    if (data.valid) {
+      message.success(t('settings.asr.verifySuccess'))
+    } else {
+      const missing = data.missing?.length || 0
+      message.warning(`${t('settings.asr.verifyFailed')} (${missing} files missing)`)
+    }
+  } catch (e) {
+    console.error('Failed to verify model:', e)
+    message.error(t('settings.asr.verifyFailed'))
+  } finally {
+    verifyingModels.value.delete(modelId)
+  }
 }
 
 onMounted(() => {
@@ -790,12 +845,37 @@ onUnmounted(() => {
               <div
                 v-for="model in localModels"
                 :key="model.id"
-                class="model-item"
+                class="model-item local-model"
                 :class="{ active: model.id === appState.asrModelId }"
                 @click="selectModel(model.id)"
               >
-                <span class="model-name">{{ model.name }}</span>
-                <span class="model-size">{{ model.size }}</span>
+                <div class="model-info">
+                  <span class="model-name">{{ model.name }}</span>
+                  <span class="model-size">{{ model.size }}</span>
+                </div>
+                <div class="model-actions" @click.stop>
+                  <a-button
+                    size="small"
+                    :loading="verifyingModels.has(model.id)"
+                    @click="verifyModel(model.id)"
+                  >
+                    {{ verifyingModels.has(model.id) ? t('settings.asr.verifying') : t('settings.asr.verify') }}
+                  </a-button>
+                  <a-popconfirm
+                    :title="t('settings.asr.deleteConfirm')"
+                    @confirm="deleteModel(model.id)"
+                    :ok-text="t('settings.asr.delete')"
+                    cancel-text="Cancel"
+                  >
+                    <a-button
+                      size="small"
+                      danger
+                      :loading="deletingModels.has(model.id)"
+                    >
+                      {{ t('settings.asr.delete') }}
+                    </a-button>
+                  </a-popconfirm>
+                </div>
               </div>
             </div>
             <div v-else class="no-models">{{ t('settings.asr.noLocalModels') }}</div>
@@ -1171,6 +1251,22 @@ onUnmounted(() => {
 .downloaded-badge {
   color: #52c41a;
   font-size: 14px;
+}
+
+.model-item.local-model {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.model-item.local-model .model-info {
+  flex: 1;
+  min-width: 100px;
+}
+
+.model-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
 }
 
 .no-models {

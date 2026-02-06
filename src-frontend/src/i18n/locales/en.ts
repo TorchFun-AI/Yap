@@ -39,6 +39,14 @@ export default {
       noLocalModels: 'No local models',
       useMirror: 'HuggingFace Mirror',
       useMirrorHint: 'Recommended for users in China',
+      delete: 'Delete',
+      verify: 'Verify',
+      deleteConfirm: 'Delete this model?',
+      verifying: 'Verifying...',
+      verifySuccess: 'Model is complete',
+      verifyFailed: 'Model is incomplete',
+      deleteSuccess: 'Deleted successfully',
+      deleteFailed: 'Delete failed',
     },
     // Shortcut Settings
     shortcut: {

@@ -39,6 +39,14 @@ export default {
       noLocalModels: '暂无本地模型',
       useMirror: 'HuggingFace 镜像',
       useMirrorHint: '国内用户建议开启',
+      delete: '删除',
+      verify: '校验',
+      deleteConfirm: '确认删除此模型？',
+      verifying: '校验中...',
+      verifySuccess: '模型完整',
+      verifyFailed: '模型不完整',
+      deleteSuccess: '删除成功',
+      deleteFailed: '删除失败',
     },
     // 快捷键设置
     shortcut: {
