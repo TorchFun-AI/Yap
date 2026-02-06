@@ -202,26 +202,13 @@ fn open_devtools(webview_window: tauri::WebviewWindow) {
     webview_window.open_devtools();
 }
 
-/// 复制文本到剪贴板（macOS）
+/// 复制文本到剪贴板
 #[tauri::command]
-fn copy_to_clipboard(text: String) -> Result<(), String> {
-    use std::process::{Command, Stdio};
-    use std::io::Write;
-
-    let mut child = Command::new("pbcopy")
-        .stdin(Stdio::piped())
-        .spawn()
-        .map_err(|e| format!("Failed to spawn pbcopy: {}", e))?;
-
-    if let Some(stdin) = child.stdin.as_mut() {
-        stdin.write_all(text.as_bytes())
-            .map_err(|e| format!("Failed to write to pbcopy: {}", e))?;
-    }
-
-    child.wait()
-        .map_err(|e| format!("pbcopy failed: {}", e))?;
-
-    Ok(())
+fn copy_to_clipboard(app: tauri::AppHandle, text: String) -> Result<(), String> {
+    use tauri_plugin_clipboard_manager::ClipboardExt;
+    app.clipboard()
+        .write_text(text)
+        .map_err(|e| format!("Failed to copy to clipboard: {}", e))
 }
 
 /// 模拟键盘输入文本（macOS）
@@ -375,6 +362,7 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .manage(SidecarState {
             child: Mutex::new(None),
         })

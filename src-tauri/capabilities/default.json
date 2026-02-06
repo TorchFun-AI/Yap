@@ -18,6 +18,7 @@
     "core:window:allow-outer-position",
     "core:window:allow-scale-factor",
     "shell:allow-spawn",
-    "shell:allow-kill"
+    "shell:allow-kill",
+    "clipboard-manager:allow-write-text"
   ]
 }
