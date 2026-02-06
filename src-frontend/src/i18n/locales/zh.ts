@@ -37,6 +37,8 @@ export default {
       download: '下载',
       downloading: '下载中...',
       noLocalModels: '暂无本地模型',
+      useMirror: 'HuggingFace 镜像',
+      useMirrorHint: '国内用户建议开启',
     },
     // 快捷键设置
     shortcut: {

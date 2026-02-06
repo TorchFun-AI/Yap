@@ -37,6 +37,8 @@ export default {
       download: 'Download',
       downloading: 'Downloading...',
       noLocalModels: 'No local models',
+      useMirror: 'HuggingFace Mirror',
+      useMirrorHint: 'Recommended for users in China',
     },
     // Shortcut Settings
     shortcut: {

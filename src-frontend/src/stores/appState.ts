@@ -28,6 +28,7 @@ const STORAGE_KEYS = {
   llmTemperature: 'app-llm-temperature',
   // ASR 配置
   asrModelId: 'app-asr-model-id',
+  useHfMirror: 'app-use-hf-mirror',
   // 快捷键配置
   openSettingsShortcut: 'app-open-settings-shortcut',
   // 输出方式配置
@@ -67,6 +68,7 @@ function loadSettings() {
 
   // ASR 配置
   const savedAsrModelId = localStorage.getItem(STORAGE_KEYS.asrModelId)
+  const savedUseHfMirror = localStorage.getItem(STORAGE_KEYS.useHfMirror)
 
   // 快捷键配置
   const savedOpenSettingsShortcut = localStorage.getItem(STORAGE_KEYS.openSettingsShortcut)
@@ -90,6 +92,7 @@ function loadSettings() {
     llmTemperature: savedLlmTemperature ? parseFloat(savedLlmTemperature) : 0.3,
     // ASR 配置
     asrModelId: savedAsrModelId || '',
+    useHfMirror: savedUseHfMirror !== null ? savedUseHfMirror === 'true' : true,
     // 快捷键配置
     openSettingsShortcut: savedOpenSettingsShortcut
       ? JSON.parse(savedOpenSettingsShortcut)
@@ -152,6 +155,7 @@ export const useAppState = defineStore('appState', () => {
 
   // ASR 配置
   const asrModelId = ref(savedSettings.asrModelId)
+  const useHfMirror = ref(savedSettings.useHfMirror)
 
   // 快捷键配置
   const openSettingsShortcut = ref<ShortcutConfig>(savedSettings.openSettingsShortcut)
@@ -366,6 +370,12 @@ export const useAppState = defineStore('appState', () => {
     notifySettingsChanged()
   }
 
+  function setUseHfMirror(enabled: boolean) {
+    useHfMirror.value = enabled
+    localStorage.setItem(STORAGE_KEYS.useHfMirror, String(enabled))
+    notifySettingsChanged()
+  }
+
   // 快捷键配置 setter
   function setOpenSettingsShortcut(shortcut: ShortcutConfig) {
     openSettingsShortcut.value = shortcut
@@ -442,6 +452,7 @@ export const useAppState = defineStore('appState', () => {
         llmTimeout: llmTimeout.value,
         llmTemperature: llmTemperature.value,
         asrModelId: asrModelId.value,
+        useHfMirror: useHfMirror.value,
         openSettingsShortcut: openSettingsShortcut.value,
         autoInputMode: autoInputMode.value,
       }
@@ -479,6 +490,7 @@ export const useAppState = defineStore('appState', () => {
     if (settings.llmTimeout !== undefined) llmTimeout.value = settings.llmTimeout
     if (settings.llmTemperature !== undefined) llmTemperature.value = settings.llmTemperature
     if (settings.asrModelId !== undefined) asrModelId.value = settings.asrModelId
+    if (settings.useHfMirror !== undefined) useHfMirror.value = settings.useHfMirror
     if (settings.openSettingsShortcut !== undefined) openSettingsShortcut.value = settings.openSettingsShortcut
     if (settings.autoInputMode !== undefined) autoInputMode.value = settings.autoInputMode
 
@@ -514,6 +526,7 @@ export const useAppState = defineStore('appState', () => {
     llmTemperature,
     // ASR 配置
     asrModelId,
+    useHfMirror,
     // 快捷键配置
     openSettingsShortcut,
     // 输出方式配置
@@ -543,6 +556,7 @@ export const useAppState = defineStore('appState', () => {
     setLlmTemperature,
     // ASR 配置方法
     setAsrModelId,
+    setUseHfMirror,
     // 快捷键配置方法
     setOpenSettingsShortcut,
     // 输出方式配置方法

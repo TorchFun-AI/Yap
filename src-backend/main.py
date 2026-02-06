@@ -68,6 +68,7 @@ model_manager = ModelManager()
 
 class DownloadRequest(BaseModel):
     model_id: str
+    use_mirror: bool = True
 
 
 @app.get("/api/models/local")
@@ -88,7 +89,7 @@ async def download_model(request: DownloadRequest):
     import threading
 
     def do_download():
-        model_manager.download_model(request.model_id)
+        model_manager.download_model(request.model_id, use_mirror=request.use_mirror)
 
     # 在后台线程中执行下载
     thread = threading.Thread(target=do_download)

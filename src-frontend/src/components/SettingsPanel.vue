@@ -249,6 +249,13 @@ interface AvailableModel {
 const localModels = ref<LocalModel[]>([])
 const availableModels = ref<AvailableModel[]>([])
 const downloadingModels = ref<Set<string>>(new Set())
+const downloadProgress = ref<Record<string, {
+  progress: number
+  downloaded: string
+  total: string
+  speed: string
+  isFileCount?: boolean
+}>>({})
 
 const API_BASE = 'http://127.0.0.1:8765'
 
@@ -277,30 +284,53 @@ async function downloadModel(modelId: string) {
   if (downloadingModels.value.has(modelId)) return
 
   downloadingModels.value.add(modelId)
+  downloadProgress.value[modelId] = {
+    progress: 0,
+    downloaded: '0 B',
+    total: 'unknown',
+    speed: '0 B/s',
+  }
+
   try {
     await fetch(`${API_BASE}/api/models/download`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model_id: modelId }),
+      body: JSON.stringify({
+        model_id: modelId,
+        use_mirror: appState.useHfMirror,
+      }),
     })
+
     // 轮询下载进度
     const checkProgress = async () => {
       const res = await fetch(`${API_BASE}/api/models/progress/${encodeURIComponent(modelId)}`)
       const progress = await res.json()
-      if (progress.status === 'completed') {
+
+      if (progress.status === 'downloading') {
+        downloadProgress.value[modelId] = {
+          progress: progress.progress || 0,
+          downloaded: progress.downloaded || '0 B',
+          total: progress.total || 'unknown',
+          speed: progress.speed || '0 B/s',
+        }
+        setTimeout(checkProgress, 1000)
+      } else if (progress.status === 'completed') {
         downloadingModels.value.delete(modelId)
+        delete downloadProgress.value[modelId]
         await fetchLocalModels()
         await fetchAvailableModels()
       } else if (progress.status === 'failed') {
         downloadingModels.value.delete(modelId)
+        delete downloadProgress.value[modelId]
         console.error('Download failed:', progress.error)
       } else {
-        setTimeout(checkProgress, 2000)
+        setTimeout(checkProgress, 1000)
       }
     }
-    setTimeout(checkProgress, 1000)
+    setTimeout(checkProgress, 500)
   } catch (e) {
     downloadingModels.value.delete(modelId)
+    delete downloadProgress.value[modelId]
     console.error('Failed to start download:', e)
   }
 }
@@ -742,6 +772,17 @@ onUnmounted(() => {
             />
           </div>
 
+          <!-- HuggingFace 镜像开关 -->
+          <div class="config-item">
+            <span class="config-label">{{ t('settings.asr.useMirror') }}</span>
+            <a-switch
+              :checked="appState.useHfMirror"
+              @update:checked="appState.setUseHfMirror"
+              size="small"
+            />
+            <span class="config-hint">{{ t('settings.asr.useMirrorHint') }}</span>
+          </div>
+
           <!-- 本地模型列表 -->
           <div class="model-section">
             <div class="section-title">{{ t('settings.asr.localModels') }}</div>
@@ -769,14 +810,27 @@ onUnmounted(() => {
                   <span class="model-name">{{ model.name }}</span>
                   <span class="model-desc">{{ model.description }}</span>
                 </div>
-                <a-button
-                  v-if="!model.downloaded"
-                  size="small"
-                  :loading="downloadingModels.has(model.id)"
-                  @click.stop="downloadModel(model.id)"
-                >
-                  {{ downloadingModels.has(model.id) ? t('settings.asr.downloading') : t('settings.asr.download') }}
-                </a-button>
+                <template v-if="!model.downloaded">
+                  <div v-if="downloadingModels.has(model.id)" class="download-progress">
+                    <a-progress
+                      :percent="downloadProgress[model.id]?.progress || 0"
+                      :show-info="false"
+                      size="small"
+                      :stroke-color="'#4A90E2'"
+                    />
+                    <div class="progress-info">
+                      <span>{{ downloadProgress[model.id]?.downloaded || '0 B' }} / {{ downloadProgress[model.id]?.total || '?' }}</span>
+                      <span>{{ downloadProgress[model.id]?.speed || '0 B/s' }}</span>
+                    </div>
+                  </div>
+                  <a-button
+                    v-else
+                    size="small"
+                    @click.stop="downloadModel(model.id)"
+                  >
+                    {{ t('settings.asr.download') }}
+                  </a-button>
+                </template>
                 <span v-else class="downloaded-badge">✓</span>
               </div>
             </div>
@@ -1124,6 +1178,42 @@ onUnmounted(() => {
   font-size: 12px;
   padding: 12px;
   text-align: center;
+}
+
+.config-hint {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 11px;
+  margin-left: 8px;
+}
+
+.download-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 180px;
+  width: 180px;
+}
+
+.download-progress :deep(.ant-progress) {
+  margin: 0;
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+  gap: 8px;
+}
+
+.progress-info span:first-child {
+  min-width: 90px;
+}
+
+.progress-info span:last-child {
+  min-width: 65px;
+  text-align: right;
 }
 
 /* Ant Design 深色主题覆盖 */
