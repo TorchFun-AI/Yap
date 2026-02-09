@@ -1,7 +1,7 @@
 # Vocistant Build System
 # Target: macOS arm64 (Apple Silicon)
 
-.PHONY: all build build-backend build-frontend clean install-deps help setup-placeholder dev
+.PHONY: all build build-backend repack-dmg build-frontend clean install-deps help setup-placeholder dev
 
 # Directories
 BACKEND_DIR := src-backend
@@ -62,8 +62,33 @@ build-frontend:
 build: build-backend
 	@echo "Building Tauri application..."
 	cd $(TAURI_DIR) && cargo tauri build
-	@echo "Build complete!"
-	@echo "Output: $(TAURI_DIR)/target/release/bundle/"
+	@$(MAKE) repack-dmg
+
+# Version (extracted from tauri.conf.json)
+VERSION := $(shell grep '"version"' $(TAURI_DIR)/tauri.conf.json | head -1 | sed 's/.*: *"\(.*\)".*/\1/')
+
+# DMG layout
+BUNDLE_DIR := $(TAURI_DIR)/target/release/bundle
+DMG_NAME := Vocistant_$(VERSION)_aarch64.dmg
+DMG_DIR := $(BUNDLE_DIR)/dmg
+
+# Repack DMG with Fix Security script (skip full rebuild)
+repack-dmg:
+	@echo "Rebuilding DMG with Fix Security script..."
+	@chmod +x "$(TAURI_DIR)/resources/Fix Security.command"
+	@rm -f "$(DMG_DIR)/$(DMG_NAME)"
+	@"$(DMG_DIR)/bundle_dmg.sh" \
+		--volname "Vocistant" \
+		--volicon "$(DMG_DIR)/icon.icns" \
+		--icon "Vocistant.app" 120 170 \
+		--app-drop-link 540 170 \
+		--add-file "Fix Security.command" "$(TAURI_DIR)/resources/Fix Security.command" 330 170 \
+		--hide-extension "Vocistant.app" \
+		--window-size 660 400 \
+		"$(DMG_NAME)" \
+		"$(BUNDLE_DIR)/macos/Vocistant.app"
+	@mv "$(DMG_NAME)" "$(DMG_DIR)/$(DMG_NAME)"
+	@echo "DMG repacked: $(DMG_DIR)/$(DMG_NAME)"
 
 # Development mode (without backend packaging)
 dev: setup-placeholder
