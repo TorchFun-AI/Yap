@@ -47,6 +47,17 @@ export default {
       verifyFailed: 'Model is incomplete',
       deleteSuccess: 'Deleted successfully',
       deleteFailed: 'Delete failed',
+      models: {
+        'mlx-community/Fun-ASR-MLT-Nano-2512-4bit': {
+          description: 'Multilingual ASR model (4-bit quantized)',
+        },
+        'mlx-community/Fun-ASR-MLT-Nano-2512-8bit': {
+          description: 'Multilingual ASR model (8-bit quantized)',
+        },
+        'mlx-community/whisper-large-v3-mlx': {
+          description: 'OpenAI Whisper Large V3 MLX version',
+        },
+      },
     },
     // Shortcut Settings
     shortcut: {

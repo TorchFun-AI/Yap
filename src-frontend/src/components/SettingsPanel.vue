@@ -890,7 +890,7 @@ onUnmounted(() => {
               <div v-for="model in availableModels" :key="model.id" class="model-item downloadable">
                 <div class="model-info">
                   <span class="model-name">{{ model.name }}</span>
-                  <span class="model-desc">{{ model.description }}</span>
+                  <span class="model-desc">{{ t(`settings.asr.models.${model.id}.description`, model.description) }}</span>
                 </div>
                 <template v-if="!model.downloaded">
                   <div v-if="downloadingModels.has(model.id)" class="download-progress">

@@ -47,6 +47,17 @@ export default {
       verifyFailed: '模型不完整',
       deleteSuccess: '删除成功',
       deleteFailed: '删除失败',
+      models: {
+        'mlx-community/Fun-ASR-MLT-Nano-2512-4bit': {
+          description: '多语言语音识别模型 (4-bit 量化)',
+        },
+        'mlx-community/Fun-ASR-MLT-Nano-2512-8bit': {
+          description: '多语言语音识别模型 (8-bit 量化)',
+        },
+        'mlx-community/whisper-large-v3-mlx': {
+          description: 'OpenAI Whisper 大模型 MLX 版',
+        },
+      },
     },
     // 快捷键设置
     shortcut: {
