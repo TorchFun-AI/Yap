@@ -31,6 +31,18 @@ struct SidecarState {
     child: Mutex<Option<CommandChild>>,
 }
 
+/// Global state for backend port
+struct PortState {
+    port: Mutex<u16>,
+}
+
+fn find_available_port() -> Result<u16, std::io::Error> {
+    let listener = std::net::TcpListener::bind("127.0.0.1:0")?;
+    let port = listener.local_addr()?.port();
+    drop(listener);
+    Ok(port)
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct WindowPosition {
     x: f64,
@@ -51,6 +63,11 @@ struct ShortcutsSettings {
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! Welcome to Vocistant.", name)
+}
+
+#[tauri::command]
+fn get_backend_port(state: tauri::State<PortState>) -> u16 {
+    *state.port.lock().unwrap()
 }
 
 #[tauri::command]
@@ -366,6 +383,9 @@ pub fn run() {
         .manage(SidecarState {
             child: Mutex::new(None),
         })
+        .manage(PortState {
+            port: Mutex::new(8765),
+        })
         .setup(|app| {
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let show = MenuItem::with_id(app, "show", "Show Window", true, None::<&str>)?;
@@ -410,6 +430,17 @@ pub fn run() {
                 }
             }
 
+            // Determine backend port: use 8765 in dev, find available port in production
+            let port: u16 = if cfg!(debug_assertions) {
+                8765
+            } else {
+                find_available_port().unwrap_or(8765)
+            };
+            log::info!("Backend port: {}", port);
+
+            // Update PortState with the determined port
+            *app.state::<PortState>().port.lock().unwrap() = port;
+
             // Start backend sidecar from resources directory
             let resource_path = app.path().resource_dir()
                 .map_err(|e| format!("Failed to get resource dir: {}", e))?;
@@ -417,7 +448,9 @@ pub fn run() {
 
             log::info!("Starting backend sidecar from: {:?}", sidecar_path);
 
-            let (mut rx, child) = app.shell().command(&sidecar_path).spawn()
+            let (mut rx, child) = app.shell().command(&sidecar_path)
+                .env("VOCISTANT_PORT", port.to_string())
+                .spawn()
                 .map_err(|e| format!("Failed to spawn sidecar: {}", e))?;
 
             log::info!("Backend sidecar started with PID: {}", child.pid());
@@ -469,7 +502,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![greet, save_window_position, load_window_position, set_window_bounds, set_ignore_cursor_events, get_cursor_position, open_settings_window, close_settings_window, broadcast_settings_changed, get_shortcut_settings, update_shortcut, open_devtools, input_text, copy_to_clipboard])
+        .invoke_handler(tauri::generate_handler![greet, get_backend_port, save_window_position, load_window_position, set_window_bounds, set_ignore_cursor_events, get_cursor_position, open_settings_window, close_settings_window, broadcast_settings_changed, get_shortcut_settings, update_shortcut, open_devtools, input_text, copy_to_clipboard])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app, event| {

@@ -3,6 +3,8 @@
  * Manages WebSocket connection for real-time log streaming from backend.
  */
 
+import { wsUrl } from './portService'
+
 export interface LogEntry {
   type: 'log'
   timestamp: string
@@ -27,7 +29,7 @@ class LogController {
       return
     }
 
-    this.ws = new WebSocket('ws://127.0.0.1:8765/ws/logs')
+    this.ws = new WebSocket(wsUrl('/ws/logs'))
 
     this.ws.onopen = () => {
       this._isConnected = true

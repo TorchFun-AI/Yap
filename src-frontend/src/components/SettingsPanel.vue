@@ -6,6 +6,7 @@ import { useAppState } from '@/stores/appState'
 import { AppStatus } from '@/constants'
 import { setLocale, getLocale } from '@/i18n'
 import { logController } from '@/services/logController'
+import { httpUrl } from '@/services/portService'
 import { message } from 'ant-design-vue'
 
 // 配置消息提示框
@@ -262,11 +263,9 @@ const downloadProgress = ref<Record<string, {
 const verifyingModels = ref<Set<string>>(new Set())
 const deletingModels = ref<Set<string>>(new Set())
 
-const API_BASE = 'http://127.0.0.1:8765'
-
 async function fetchLocalModels() {
   try {
-    const res = await fetch(`${API_BASE}/api/models/local`)
+    const res = await fetch(httpUrl('/api/models/local'))
     const data = await res.json()
     console.log('fetchLocalModels response:', data)
     localModels.value = data.models || []
@@ -277,7 +276,7 @@ async function fetchLocalModels() {
 
 async function fetchAvailableModels() {
   try {
-    const res = await fetch(`${API_BASE}/api/models/available`)
+    const res = await fetch(httpUrl('/api/models/available'))
     const data = await res.json()
     availableModels.value = data.models || []
   } catch (e) {
@@ -297,7 +296,7 @@ async function downloadModel(modelId: string) {
   }
 
   try {
-    await fetch(`${API_BASE}/api/models/download`, {
+    await fetch(httpUrl('/api/models/download'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -308,7 +307,7 @@ async function downloadModel(modelId: string) {
 
     // 轮询下载进度
     const checkProgress = async () => {
-      const res = await fetch(`${API_BASE}/api/models/progress/${encodeURIComponent(modelId)}`)
+      const res = await fetch(httpUrl(`/api/models/progress/${encodeURIComponent(modelId)}`))
       const progress = await res.json()
 
       if (progress.status === 'downloading') {
@@ -353,7 +352,7 @@ async function deleteModel(modelId: string) {
 
   deletingModels.value.add(modelId)
   try {
-    const res = await fetch(`${API_BASE}/api/models/${encodeURIComponent(modelId)}`, {
+    const res = await fetch(httpUrl(`/api/models/${encodeURIComponent(modelId)}`), {
       method: 'DELETE',
     })
     const data = await res.json()
@@ -382,7 +381,7 @@ async function verifyModel(modelId: string) {
   verifyingModels.value.add(modelId)
   try {
     const res = await fetch(
-      `${API_BASE}/api/models/verify/${encodeURIComponent(modelId)}?use_mirror=${appState.useHfMirror}`
+      httpUrl(`/api/models/verify/${encodeURIComponent(modelId)}?use_mirror=${appState.useHfMirror}`)
     )
     const data = await res.json()
     if (data.valid) {

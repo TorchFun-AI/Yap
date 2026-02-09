@@ -4,6 +4,7 @@ FastAPI application with WebSocket support for real-time voice processing.
 """
 
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -238,10 +239,11 @@ async def logs_websocket(websocket: WebSocket):
 
 def main():
     """Entry point for the backend server."""
+    port = int(os.environ.get("VOCISTANT_PORT", "8765"))
     uvicorn.run(
         app,
         host="127.0.0.1",
-        port=8765,
+        port=port,
     )
 
 

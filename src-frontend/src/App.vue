@@ -7,10 +7,9 @@ import FloatingBallV2 from './components/FloatingBallV2.vue'
 import { useAppState } from '@/stores/appState'
 import { signalController } from '@/services/signalController'
 import { waveformController } from '@/services/waveformController'
+import { initPort, wsUrl } from '@/services/portService'
 import { AppStatus } from '@/constants'
 import {
-  WS_DEFAULT_URL,
-  WS_WAVEFORM_URL,
   ConnectionStatus,
   WsMessageType,
   BackendStatus,
@@ -317,6 +316,9 @@ const handleAction = async (id: string, _value?: string) => {
 
 // 初始化窗口 - 固定大小
 onMounted(async () => {
+  // 初始化后端端口（必须在 WebSocket 连接之前）
+  await initPort()
+
   // 监听打开设置快捷键
   document.addEventListener('keydown', handleOpenSettingsShortcut)
   // 监听关闭设置窗口快捷键 (Command+W / Ctrl+W)
@@ -471,15 +473,13 @@ onMounted(async () => {
     }
   })
 
-  const wsUrl = import.meta.env.VITE_WS_URL || WS_DEFAULT_URL
-  signalController.connect(wsUrl)
+  signalController.connect(wsUrl('/ws/audio'))
 
   // 初始化波形 WebSocket 连接
-  const waveformUrl = import.meta.env.VITE_WS_WAVEFORM_URL || WS_WAVEFORM_URL
   waveformController.onData((levels) => {
     appState.setWaveformLevels(levels)
   })
-  waveformController.connect(waveformUrl)
+  waveformController.connect(wsUrl('/ws/waveform'))
 
   // 启动时自动展开操作区（带动画）
   nextTick(() => {
