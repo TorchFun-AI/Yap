@@ -655,7 +655,6 @@ const iconPaths: Record<string, string> = {
 /* 左侧展开时的操作面板样式 */
 .expand-left .action-panel {
   padding: 0 28px 0 12px;
-  flex-direction: row-reverse;
   transform-origin: right center;
 }
 
