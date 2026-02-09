@@ -375,20 +375,18 @@ const iconPaths: Record<string, string> = {
         />
       </div>
 
-      <!-- Idle: Sparkles 图标 -->
+      <!-- Idle: 四角星图标 (iOS 风格) -->
       <svg
         v-else
-        class="ball-icon"
+        class="ball-icon star-glow"
         :style="{ color: iconColor }"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="1.5"
-        stroke-linecap="round"
-        stroke-linejoin="round"
+        viewBox="0 0 100 100"
+        fill="currentColor"
       >
-        <path d="M12 3L13.5 8.5L19 10L13.5 11.5L12 17L10.5 11.5L5 10L10.5 8.5L12 3Z" />
-        <path d="M19 16L20 18.5L22.5 19.5L20 20.5L19 23L18 20.5L15.5 19.5L18 18.5L19 16Z" />
+        <!-- 主星星 (居中，更大) -->
+        <path d="M50 0 C50 38 62 50 100 50 C62 50 50 62 50 100 C50 62 38 50 0 50 C38 50 50 38 50 0 Z" />
+        <!-- 右下小星星 -->
+        <path d="M90 73 C90 85 95 90 107 90 C95 90 90 95 90 107 C90 95 85 90 73 90 C85 90 90 85 90 73 Z" opacity="0.85" />
       </svg>
 
       <!-- 呼吸灯效果 -->
@@ -480,6 +478,7 @@ const iconPaths: Record<string, string> = {
   box-shadow: 0 0 12px rgba(74, 144, 226, 0.5);
   transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   flex-shrink: 0;
+  overflow: visible;
 }
 
 .main-button:hover {
@@ -499,6 +498,11 @@ const iconPaths: Record<string, string> = {
   width: 24px;
   height: 24px;
   transition: color 0.3s ease;
+}
+
+/* 星星发光效果 */
+.ball-icon.star-glow {
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.55));
 }
 
 /* 加载旋转动画 */
