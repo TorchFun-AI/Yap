@@ -125,45 +125,59 @@ const getExpandedWithMessagesBounds = () => {
 let pollTimer: number | null = null
 let lastIgnoreState = true
 
-// 保存窗口位置到 Tauri store (保留供后续使用)
-// @ts-expect-error 暂未使用
-const _saveWindowPosition = async (x: number, y: number) => {
-  try {
-    await invoke('save_window_position', { x, y })
-  } catch (e) {
-    console.error('Failed to save window position:', e)
-  }
+const WINDOW_POSITION_KEY = 'app-window-position'
+
+// 保存窗口位置到 localStorage
+const saveWindowPosition = (x: number, y: number) => {
+  localStorage.setItem(WINDOW_POSITION_KEY, JSON.stringify({ x, y }))
 }
 
-// 从 Tauri store 加载窗口位置
-const loadWindowPosition = async (): Promise<{ x: number; y: number }> => {
+// 从 localStorage 加载窗口位置
+const loadWindowPosition = (): { x: number; y: number } | null => {
   try {
-    const pos = await invoke<{ x: number; y: number }>('load_window_position')
-    return pos
+    const saved = localStorage.getItem(WINDOW_POSITION_KEY)
+    if (saved) {
+      return JSON.parse(saved)
+    }
   } catch {
-    return DEFAULT_WINDOW_POSITION
+    // ignore
   }
+  return null
 }
 
-// 检查并修正位置到屏幕范围内
-const clampToScreen = async (x: number, y: number, width: number, height: number) => {
+// 校验悬浮球位置，无保存位置或超出屏幕时使用默认位置（屏幕 75%/75%）
+const getValidBallPosition = async (saved: { x: number; y: number } | null) => {
   try {
     const monitors = await availableMonitors()
     if (monitors.length > 0) {
       const primary = monitors[0]!
       const screenWidth = primary.size.width / primary.scaleFactor
       const screenHeight = primary.size.height / primary.scaleFactor
-      if (x < 0 || x + width > screenWidth) {
-        x = Math.max(0, Math.min(x, screenWidth - width - 20))
+
+      const defaultPos = () => ({
+        x: Math.min(screenWidth * 0.75, screenWidth - WINDOW_BALL_SIZE),
+        y: Math.min(screenHeight * 0.75, screenHeight - WINDOW_BALL_SIZE),
+      })
+
+      if (!saved) {
+        return defaultPos()
       }
-      if (y < 0 || y + height > screenHeight) {
-        y = Math.max(0, Math.min(y, screenHeight - height - 20))
+
+      // 只检查悬浮球本身是否超出屏幕（收缩状态）
+      const isOutOfBounds = saved.x < 0 || saved.y < 0 ||
+        saved.x + WINDOW_BALL_SIZE > screenWidth ||
+        saved.y + WINDOW_BALL_SIZE > screenHeight
+
+      if (isOutOfBounds) {
+        return defaultPos()
       }
+
+      return saved
     }
   } catch (e) {
-    console.error('Failed to get monitors:', e)
+    console.error('Failed to validate window position:', e)
   }
-  return { x, y }
+  return saved ?? DEFAULT_WINDOW_POSITION
 }
 
 // 轮询检测鼠标位置
@@ -268,9 +282,27 @@ const updateExpandDirection = async () => {
 }
 
 // 处理拖动结束
-const handleDragEnd = () => {
-  // 延迟更新展开方向，等待拖动完成
-  setTimeout(updateExpandDirection, 100)
+const handleDragEnd = async () => {
+  // 延迟等待拖动完成
+  await new Promise(resolve => setTimeout(resolve, 100))
+
+  // 保存窗口位置
+  try {
+    const appWindow = getCurrentWindow()
+    const pos = await appWindow.outerPosition()
+    const scale = await appWindow.scaleFactor()
+    const windowX = pos.x / scale
+    const windowY = pos.y / scale
+    // 反算悬浮球在屏幕上的位置（与 onMounted 中的计算互逆）
+    const ballX = windowX + WINDOW_SHADOW + PANEL_WIDTH
+    const ballY = windowY + WINDOW_SHADOW
+    saveWindowPosition(ballX, ballY)
+  } catch (e) {
+    console.error('Failed to save window position after drag:', e)
+  }
+
+  // 更新展开方向
+  updateExpandDirection()
 }
 
 // 录音控制
@@ -345,10 +377,9 @@ onMounted(async () => {
     }
   })
 
-  const savedPosition = await loadWindowPosition()
+  const ballPos = await getValidBallPosition(loadWindowPosition())
 
   // 窗口大小：两侧操作面板空间 + 悬浮球 + 阴影
-  // 悬浮球在窗口中间，两侧都有 PANEL_WIDTH 的空间
   const totalWidth = PANEL_WIDTH + WINDOW_BALL_SIZE + PANEL_WIDTH + WINDOW_SHADOW * 2
   const totalHeight = WINDOW_BALL_SIZE + WINDOW_SHADOW * 2 + 150
 
@@ -358,17 +389,16 @@ onMounted(async () => {
     const primary = monitors[0]!
     const screenWidth = primary.size.width / primary.scaleFactor
     // 保存的位置是悬浮球在屏幕上的位置
-    const ballCenterX = savedPosition.x + WINDOW_BALL_SIZE / 2
+    const ballCenterX = ballPos.x + WINDOW_BALL_SIZE / 2
     expandDirection.value = ballCenterX > screenWidth / 2 ? 'left' : 'right'
   }
 
   // 窗口位置 = 悬浮球位置 - 悬浮球在窗口中的偏移
   // 悬浮球在窗口中的位置：WINDOW_SHADOW + PANEL_WIDTH
-  const windowX = savedPosition.x - WINDOW_SHADOW - PANEL_WIDTH
-  const windowY = savedPosition.y - WINDOW_SHADOW
+  const windowX = ballPos.x - WINDOW_SHADOW - PANEL_WIDTH
+  const windowY = ballPos.y - WINDOW_SHADOW
 
-  const { x, y } = await clampToScreen(windowX, windowY, totalWidth, totalHeight)
-  await invoke('set_window_bounds', { x, y, width: totalWidth, height: totalHeight })
+  await invoke('set_window_bounds', { x: windowX, y: windowY, width: totalWidth, height: totalHeight })
 
   // 初始状态启用鼠标穿透
   await invoke('set_ignore_cursor_events', { ignore: true })
