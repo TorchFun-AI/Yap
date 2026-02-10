@@ -44,12 +44,11 @@ build-backend:
 	cd $(BACKEND_DIR) && pyinstaller \
 		--distpath dist \
 		--workpath build \
-		--clean \
 		--noconfirm \
 		vocistant-backend.spec
 	@# Copy directory for Tauri resources
 	@rm -rf $(BINARIES_DIR)/vocistant-backend
-	@cp -r $(BACKEND_DIR)/dist/vocistant-backend $(BINARIES_DIR)/vocistant-backend
+	@mv $(BACKEND_DIR)/dist/vocistant-backend $(BINARIES_DIR)/vocistant-backend
 	@echo "Backend sidecar built: $(BINARIES_DIR)/vocistant-backend/"
 
 # Build frontend
