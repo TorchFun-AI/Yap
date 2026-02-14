@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-CC%20BY--NC%204.0-blue.svg" alt="License" /></a>
   <img src="https://img.shields.io/badge/platform-macOS%20(Apple%20Silicon)-black?logo=apple" alt="Platform" />
   <img src="https://img.shields.io/badge/runtime-100%25%20local-brightgreen" alt="Local" />
 </p>
@@ -139,4 +139,4 @@ Yap uses any **OpenAI-compatible API** for text correction and translation. Conf
 
 ## 📄 License
 
-[MIT](LICENSE)
+[CC BY-NC 4.0](LICENSE) — Free to use, modify, and share. Not for commercial use.
