@@ -1,4 +1,4 @@
-# Vocistant Build System
+# Yap Build System
 # Target: macOS arm64 (Apple Silicon)
 
 .PHONY: all build build-backend repack-dmg build-frontend clean install-deps help setup-placeholder dev
@@ -17,7 +17,7 @@ all: build
 
 # Help
 help:
-	@echo "Vocistant Build System"
+	@echo "Yap Build System"
 	@echo ""
 	@echo "Usage:"
 	@echo "  make install-deps    Install all dependencies"
@@ -68,7 +68,7 @@ VERSION := $(shell grep '"version"' $(TAURI_DIR)/tauri.conf.json | head -1 | sed
 
 # DMG layout
 BUNDLE_DIR := $(TAURI_DIR)/target/release/bundle
-DMG_NAME := Vocistant_$(VERSION)_aarch64.dmg
+DMG_NAME := Yap_$(VERSION)_aarch64.dmg
 DMG_DIR := $(BUNDLE_DIR)/dmg
 
 # Repack DMG with Fix Security script (skip full rebuild)
@@ -77,15 +77,15 @@ repack-dmg:
 	@chmod +x "$(TAURI_DIR)/resources/Fix Security.command"
 	@rm -f "$(DMG_DIR)/$(DMG_NAME)"
 	@"$(DMG_DIR)/bundle_dmg.sh" \
-		--volname "Vocistant" \
+		--volname "Yap" \
 		--volicon "$(DMG_DIR)/icon.icns" \
-		--icon "Vocistant.app" 120 170 \
+		--icon "Yap.app" 120 170 \
 		--app-drop-link 540 170 \
 		--add-file "Fix Security.command" "$(TAURI_DIR)/resources/Fix Security.command" 330 170 \
-		--hide-extension "Vocistant.app" \
+		--hide-extension "Yap.app" \
 		--window-size 660 400 \
 		"$(DMG_NAME)" \
-		"$(BUNDLE_DIR)/macos/Vocistant.app"
+		"$(BUNDLE_DIR)/macos/Yap.app"
 	@mv "$(DMG_NAME)" "$(DMG_DIR)/$(DMG_NAME)"
 	@echo "DMG repacked: $(DMG_DIR)/$(DMG_NAME)"
 
