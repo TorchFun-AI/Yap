@@ -19,8 +19,7 @@
 
 ## 🎬 Demo
 
-<!-- Replace with your actual demo video URL -->
-https://github.com/user-attachments/assets/demo.mp4
+> 🎥 Demo video coming soon — stay tuned!
 
 > 💡 **Inspired by the agentic coding movement** — like [OpenClaw](https://github.com/open-claw/open-claw)'s founder voice-chatting with 10+ agents to build software. Yap is the missing input layer that makes talking to your dev tools feel native.
 
