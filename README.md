@@ -81,27 +81,23 @@ Models auto-download from HuggingFace on first launch. Zero config to get starte
 - Python 3.10 – 3.12
 - [uv](https://github.com/astral-sh/uv)
 
-### Development
+### Install & Run
 
 ```bash
 # Clone
-git clone https://github.com/user/yap.git && cd yap
+git clone https://github.com/TorchFun-AI/Yap.git && cd Yap
 
-# Install dependencies
-make install-deps
+# Install frontend dependencies
+cd src-frontend && npm install && cd ..
 
-# Terminal 1 — Python AI backend
+# Install Python dependencies
+cd src-backend && uv sync && cd ..
+
+# Terminal 1 — Start Python AI backend
 cd src-backend && uv run python main.py
 
-# Terminal 2 — Tauri + Vue dev server
-make dev
-```
-
-### Build
-
-```bash
-# Full production build → DMG
-make build
+# Terminal 2 — Start Tauri dev server
+cd src-tauri && npm run tauri dev
 ```
 
 ---
