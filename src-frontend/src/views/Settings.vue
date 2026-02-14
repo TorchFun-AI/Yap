@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * Settings View
- * Configuration page for Vocistant
+ * Configuration page for Yap
  */
 </script>
 

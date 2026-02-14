@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Vocistant",
+  "productName": "Yap",
   "version": "0.1.0",
   "identifier": "com.vocistant.app",
   "build": {
@@ -15,7 +15,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Vocistant",
+        "title": "Yap",
         "width": 520,
         "height": 500,
         "resizable": false,

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Vocistant — a local real-time voice-to-text input tool. Captures microphone audio, runs VAD + ASR locally on Apple Silicon (MLX), optionally corrects/translates via LLM, then auto-types the result into the active window. Built with Tauri 2 + Vue 3 + Python FastAPI.
+Yap — a local real-time voice-to-text input tool. Captures microphone audio, runs VAD + ASR locally on Apple Silicon (MLX), optionally corrects/translates via LLM, then auto-types the result into the active window. Built with Tauri 2 + Vue 3 + Python FastAPI.
 
 ## Build & Dev Commands
 
