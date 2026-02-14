@@ -21,7 +21,7 @@
 
 > 🎥 Demo video coming soon — stay tuned!
 
-> 💡 **Inspired by the agentic coding movement** — like [OpenClaw](https://github.com/open-claw/open-claw)'s founder voice-chatting with 10+ agents to build software. Yap is the missing input layer that makes talking to your dev tools feel native.
+> 💡 **Inspired by the agentic coding movement** — like [OpenClaw](https://github.com/openclaw/openclaw)'s founder voice-chatting with 10+ agents to build software. Yap is the missing input layer that makes talking to your dev tools feel native.
 
 <!-- Optional: embed a video showing Yap + Claude Code / Cursor workflow -->
 <!-- https://github.com/user-attachments/assets/agentic-workflow.mp4 -->
