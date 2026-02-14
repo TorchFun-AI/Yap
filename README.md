@@ -1,84 +1,112 @@
-# Vocistant
+<p align="center">
+  <img src="docs/logo.png" alt="Yap" width="120" />
+</p>
 
-> 本地运行的实时语音转文字输入工具，基于 Tauri + Vue 3 + Python AI 构建，支持将语音实时转写并自动输入到任意应用程序。
+<h1 align="center">Yap</h1>
 
-## 特性
+<p align="center">
+  <strong>The voice input layer for agentic coding.</strong><br/>
+  Speak in any language. It transcribes, corrects, translates, and types — right where your cursor is.
+</p>
 
-- **本地运行** - 所有 AI 推理在本地完成，无需联网，保护隐私
-- **实时转写** - 流式识别，边说边出字，延迟低
-- **自动输入** - 识别结果自动输入到当前活动窗口
-- **后台常驻** - 系统托盘运行，随时唤醒
-- **中文优化** - 使用 MLX Audio 模型，中文识别效果优秀
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License" /></a>
+  <img src="https://img.shields.io/badge/platform-macOS%20(Apple%20Silicon)-black?logo=apple" alt="Platform" />
+  <img src="https://img.shields.io/badge/runtime-100%25%20local-brightgreen" alt="Local" />
+</p>
 
-## 技术栈
+---
 
-| 层级 | 技术 |
-|------|------|
-| **Frontend** | Vue 3 + TypeScript + Ant Design Vue + Pinia |
-| **Core** | Tauri 2 (Rust) |
-| **Backend** | Python 3.12 + FastAPI + Silero VAD + MLX Audio |
+## 🎬 Demo
 
-## 项目结构
+<!-- Replace with your actual demo video URL -->
+https://github.com/user-attachments/assets/demo.mp4
+
+> 💡 **Inspired by the agentic coding movement** — like [OpenClaw](https://github.com/open-claw/open-claw)'s founder voice-chatting with 10+ agents to build software. Yap is the missing input layer that makes talking to your dev tools feel native.
+
+<!-- Optional: embed a video showing Yap + Claude Code / Cursor workflow -->
+<!-- https://github.com/user-attachments/assets/agentic-workflow.mp4 -->
+
+---
+
+## 🤔 Why Yap?
+
+The agentic coding era is here. You're talking to Claude Code, Cursor, Copilot — but you're still *typing* every prompt with your fingers.
+
+**Your voice is 3x faster than your keyboard.** Yap bridges the gap.
+
+- 🗣️ **Voice-first workflow** — Talk to your agents, your terminal, your browser. Yap types it out.
+- 🔒 **100% local** — On-device VAD + ASR via MLX. No cloud. No data leaves your machine.
+- 🌍 **Multilingual** — Speak Chinese, English, Japanese, Korean, and more. Real-time translation built in.
+- ✨ **Smart correction** — LLM-powered spoken → written style conversion. Your voice, but polished.
+
+---
+
+## ⚡ How It Works
+
+Yap lives as a floating ball on your screen. Toggle input mode, and it listens:
 
 ```
-Vocistant/
-├── src-frontend/          # Vue 3 前端
-│   └── src/
-│       ├── components/    # UI 组件 (FloatingBall, StatusPanel)
-│       ├── views/         # 页面 (Settings)
-│       ├── stores/        # Pinia 状态管理
-│       └── services/      # 服务层 (bridge, audioRecorder)
-├── src-tauri/             # Tauri Rust 核心
-│   └── src/
-│       └── main.rs        # 应用入口
-└─ src-backend/           # Python AI 后端
-    ├── core/
-    │   └── pipeline.py    # AI 处理管线
-    ├── models/            # ASR 模型文件
-    └── main.py            # FastAPI 服务入口
-
+🎙️ Voice ──→ 🔇 VAD ──→ 🧠 ASR ──→ 💬 LLM ──→ ⌨️ Input
+             Silero      MLX       Correct    Types into
+             detects     on-device  & Translate active app
+             speech      transcribe (optional)
 ```
 
-## 系统要求
+Models auto-download from HuggingFace on first launch. Zero config to get started.
 
-| 平台 | 最低要求 |
-|------|----------|
-| **macOS** | 10.15+ (Catalina) |
-| **Windows** | Windows 10 64-bit |
-| **Linux** | Ubuntu 20.04+ |
-| **内存** | 4GB RAM |
-| **存储** | 1GB 可用空间 |
+---
 
-## 快速开始
+## ✨ Features
 
-### 前置条件
+| | Feature | Description |
+|---|---------|-------------|
+| 🎙️ | **Multilingual Voice Input** | Chinese, English, Japanese, and more — switch on the fly |
+| 🌐 | **Real-time Translation** | Speak in one language, type in another |
+| ✍️ | **Formal Correction** | Spoken → written style, powered by any LLM |
+| 🖥️ | **Universal Input** | Works with any app — Claude Code, Cursor, VS Code, Terminal, browser, Slack... |
+| 🫧 | **Floating Ball UI** | Always-on-top, draggable, with live waveform visualization |
+| 🔒 | **Fully Local** | On-device ASR, no cloud dependency, your data stays yours |
+| 🌏 | **i18n Menu** | 中文 / English interface |
 
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- macOS with Apple Silicon (M1/M2/M3/M4)
 - Node.js 18+
-- Rust (最新稳定版)
-- Python 3.10 - 3.12
-- uv (Python 包管理器)
+- Rust (latest stable)
+- Python 3.10 – 3.12
+- [uv](https://github.com/astral-sh/uv)
 
-### 安装与运行
+### Development
 
 ```bash
-# 1. 克隆项目
-git clone <repo-url>
-cd Vocistant
+# Clone
+git clone https://github.com/user/yap.git && cd yap
 
-# 2. 安装前端依赖
-cd src-frontend && npm install && cd ..
+# Install dependencies
+make install-deps
 
-# 3. 安装 Python 依赖
-cd src-backend && uv sync && cd ..
-
-# 4. 启动 Python AI 服务
+# Terminal 1 — Python AI backend
 cd src-backend && uv run python main.py
 
-# 5. 启动 Tauri 开发服务 (新终端)
-cd src-tauri && npm run tauri dev
+# Terminal 2 — Tauri + Vue dev server
+make dev
 ```
 
-## 架构概览
+### Build
+
+```bash
+# Full production build → DMG
+make build
+```
+
+---
+
+## 🏗️ Architecture
 
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
@@ -88,10 +116,31 @@ cd src-tauri && npm run tauri dev
                               │                        │
                               ▼                        ▼
                         ┌───────────┐           ┌───────────┐
-                        │ 键盘模拟   │           │ VAD + ASR │
+                        │ Keyboard  │           │ VAD + ASR │
+                        │ Simulation│           │   + LLM   │
                         └───────────┘           └───────────┘
 ```
 
-## License
+| Layer | Stack |
+|-------|-------|
+| Frontend | Vue 3 + TypeScript + Ant Design Vue + Pinia |
+| Core | Tauri 2 (Rust) |
+| Backend | Python + FastAPI + Silero VAD + MLX Audio |
 
-MIT
+---
+
+## 🔧 LLM Configuration
+
+Yap uses any **OpenAI-compatible API** for text correction and translation. Configure in Settings:
+
+- API Key
+- Base URL (e.g. `https://api.openai.com/v1`, or a local Ollama endpoint)
+- Model name
+
+> This is optional — without it, Yap still does voice-to-text perfectly fine.
+
+---
+
+## 📄 License
+
+[MIT](LICENSE)
