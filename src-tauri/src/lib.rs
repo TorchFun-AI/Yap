@@ -62,7 +62,7 @@ struct ShortcutsSettings {
 
 #[tauri::command]
 fn greet(name: &str) -> String {
-    format!("Hello, {}! Welcome to Vocistant.", name)
+    format!("Hello, {}! Welcome to Yap.", name)
 }
 
 #[tauri::command]

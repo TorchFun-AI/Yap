@@ -29,14 +29,14 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan handler for startup/shutdown events."""
-    print("Vocistant backend starting...")
+    print("Yap backend starting...")
     setup_websocket_logging()
     yield
-    print("Vocistant backend shutting down...")
+    print("Yap backend shutting down...")
 
 
 app = FastAPI(
-    title="Vocistant AI",
+    title="Yap AI",
     description="Voice Assistant Backend with VAD and ASR",
     version="0.1.0",
     lifespan=lifespan,
