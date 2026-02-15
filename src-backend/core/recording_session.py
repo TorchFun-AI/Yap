@@ -53,15 +53,26 @@ class RecordingSession:
         if config and config.get("asrModelId"):
             self._pipeline.asr.set_model_id(config["asrModelId"])
 
-        # Initialize pipeline (loads ASR model and LLM client)
+        # Initialize pipeline in background thread to keep event loop responsive
+        # so status messages (downloading/loading) can be sent in real-time
+        self._config = config
+        init_thread = threading.Thread(target=self._init_and_start, daemon=True)
+        init_thread.start()
+
+    def _init_and_start(self) -> None:
+        """Initialize pipeline and start recording (runs in background thread)."""
         try:
             self._pipeline.initialize()
         except Exception as e:
             self._is_running = False
-            self._on_result({"type": "status", "status": "error", "message": f"Model loading failed: {e}"})
+            self._loop.call_soon_threadsafe(
+                self._on_result,
+                {"type": "status", "status": "error", "message": f"Model loading failed: {e}"}
+            )
             return
 
         # Apply runtime config
+        config = self._config
         if config:
             asr_language = config.get("language", "auto")
             correction_enabled = config.get("correctionEnabled", True)
@@ -81,7 +92,10 @@ class RecordingSession:
             )
 
         self._audio_capture.start(callback=self._on_audio_chunk)
-        self._on_result({"type": "status", "status": "recording"})
+        self._loop.call_soon_threadsafe(
+            self._on_result,
+            {"type": "status", "status": "recording"}
+        )
 
     def _on_audio_chunk(self, audio_bytes: bytes) -> None:
         """Process audio chunk from capture."""
@@ -93,6 +107,10 @@ class RecordingSession:
         broadcast_waveform(levels)
         # Process through ASR pipeline
         result = self._pipeline.process_chunk(audio_bytes)
+        # Auto-stop on idle timeout
+        if result and result.get("type") == "idle_timeout":
+            self.stop()
+            return
         self._send_result(result)
 
     def _send_result(self, result: dict) -> None:
@@ -105,7 +123,11 @@ class RecordingSession:
         self._is_running = False
         self._audio_capture.stop()
         self._pipeline.reset()
-        self._on_result({"type": "status", "status": "stopped"})
+        # Thread-safe: stop() may be called from audio thread (e.g. idle timeout)
+        if self._loop:
+            self._loop.call_soon_threadsafe(self._on_result, {"type": "status", "status": "stopped"})
+        else:
+            self._on_result({"type": "status", "status": "stopped"})
 
     def update_config(self, config: dict) -> None:
         """Update runtime configuration during recording."""

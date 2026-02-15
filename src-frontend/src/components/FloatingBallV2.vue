@@ -366,12 +366,12 @@ const iconPaths: Record<string, string> = {
       </svg>
 
       <!-- Listening/Speaking: 声波可视化 -->
-      <div v-else-if="showWaveform" class="waveform-container" :style="{ color: iconColor }">
+      <div v-else-if="showWaveform" class="waveform-container">
         <div
           v-for="(level, index) in waveformLevels"
           :key="index"
           class="waveform-bar"
-          :style="{ height: `${Math.max(4, level * 20)}px` }"
+          :style="{ height: `${Math.max(6, level * 32)}px` }"
         />
       </div>
 
@@ -490,17 +490,18 @@ const iconPaths: Record<string, string> = {
 }
 
 .ball-icon {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   transition: color 0.3s ease;
 }
 
 /* Logo 发光效果 */
 .ball-icon.star-glow {
-  width: 100%;
-  height: 100%;
+  width: 85%;
+  height: 85%;
   object-fit: cover;
   border-radius: 50%;
+  clip-path: circle(50%);
   filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.55));
 }
 
@@ -585,16 +586,17 @@ const iconPaths: Record<string, string> = {
   align-items: center;
   justify-content: center;
   gap: 3px;
-  height: 24px;
+  height: 36px;
+  width: 42px;
 }
 
 .waveform-bar {
-  width: 3px;
-  min-height: 4px;
-  max-height: 20px;
-  background: currentColor;
-  border-radius: 1.5px;
-  transition: height 0.05s ease-out;
+  width: 3.5px;
+  min-height: 6px;
+  max-height: 32px;
+  background: #B388FF;
+  border-radius: 2px;
+  transition: height 0.08s ease-out;
 }
 
 /* 呼吸灯效果 */

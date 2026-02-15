@@ -18,6 +18,9 @@ import {
   DEFAULT_WINDOW_POSITION,
 } from '@/constants'
 import { setLocale } from '@/i18n'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const PANEL_WIDTH = 200  // 操作面板宽度
 
@@ -475,10 +478,13 @@ onMounted(async () => {
     } else if (data.type === WsMessageType.STATUS) {
       if (data.status === BackendStatus.STARTING) {
         appState.setStatus(AppStatus.STARTING)
+        appState.updateOrAddSystemMessage(t('systemMessages.loadingModel'))
       } else if (data.status === BackendStatus.DOWNLOADING) {
         appState.setStatus(AppStatus.STARTING)
+        appState.updateOrAddSystemMessage(data.message || t('systemMessages.downloadingModel'))
       } else if (data.status === BackendStatus.RECORDING) {
         appState.setStatus(AppStatus.LISTENING)
+        appState.updateOrAddSystemMessage(t('systemMessages.recordingStarted'))
       } else if (data.status === BackendStatus.STOPPED) {
         appState.setStatus(AppStatus.IDLE)
       } else if (data.status === BackendStatus.TRANSCRIBING) {
@@ -491,6 +497,10 @@ onMounted(async () => {
         appState.setStatus(AppStatus.SPEAKING)
       } else if (data.status === 'error') {
         appState.setError(data.message || 'Unknown error')
+        appState.updateOrAddSystemMessage(data.message || t('systemMessages.error'))
+      } else if (data.status === 'idle_timeout') {
+        appState.setStatus(AppStatus.IDLE)
+        appState.updateOrAddSystemMessage(t('systemMessages.idleTimeout'))
       }
     } else if (data.type === WsMessageType.ERROR) {
       appState.setError(data.message)

@@ -125,4 +125,13 @@ export default {
     zh: '中文',
     en: 'English',
   },
+
+  // System Messages
+  systemMessages: {
+    loadingModel: 'Loading model…',
+    downloadingModel: 'Downloading model…',
+    recordingStarted: 'Recording started, speak now',
+    idleTimeout: 'Recording stopped due to inactivity',
+    error: 'An error occurred',
+  },
 }

@@ -46,12 +46,12 @@ class WaveformController {
         try {
           const data = JSON.parse(event.data) as WaveformData
           if (data.type === 'waveform' && Array.isArray(data.levels)) {
-            // 确保数据是 5 个归一化值
-            const levels = data.levels.slice(0, 5).map(v =>
+            // 确保数据是 7 个归一化值
+            const levels = data.levels.slice(0, 7).map(v =>
               Math.max(0, Math.min(1, Number(v) || 0))
             )
-            // 如果不足 5 个，补 0
-            while (levels.length < 5) {
+            // 如果不足 7 个，补 0
+            while (levels.length < 7) {
               levels.push(0)
             }
             this.onDataCallback?.(levels)

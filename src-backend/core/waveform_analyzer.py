@@ -10,9 +10,9 @@ from typing import List
 class WaveformAnalyzer:
     """Analyzes audio data to generate waveform visualization levels."""
 
-    # Sample 5 points from FFT bin range (rfft returns 257 bins for 512 samples)
-    # Range 32-224 covers ~1000-7000 Hz at 16kHz sample rate
-    SAMPLE_INDICES = [10,20,30,40,50]
+    # Sample 4 bins from the speech-dominant range, then mirror for symmetric 7-bar display
+    # Bins cover ~150-1100 Hz at 16kHz — where most speech energy lives
+    SAMPLE_INDICES = [5, 12, 22, 35]
 
     def __init__(self, sample_rate: int = 16000):
         self.sample_rate = sample_rate
@@ -22,13 +22,13 @@ class WaveformAnalyzer:
 
     def analyze(self, audio_bytes: bytes) -> List[float]:
         """
-        Analyze audio chunk and return 5 normalized levels.
+        Analyze audio chunk and return 7 normalized levels (symmetric: center tallest).
 
         Args:
             audio_bytes: Raw audio bytes (int16)
 
         Returns:
-            List of 5 float values (0.0 - 1.0)
+            List of 7 float values (0.0 - 1.0), symmetric pattern
         """
         # Convert bytes to numpy array
         audio_data = np.frombuffer(audio_bytes, dtype=np.int16)
@@ -43,7 +43,7 @@ class WaveformAnalyzer:
 
         # Need minimum samples for FFT
         if len(self._buffer) < self._min_samples:
-            return [0.0, 0.0, 0.0, 0.0, 0.0]
+            return [0.0] * 7
 
         # Apply window function
         windowed = self._buffer[-self._min_samples:] * np.hanning(self._min_samples)
@@ -52,16 +52,18 @@ class WaveformAnalyzer:
         fft_result = np.fft.rfft(windowed)
         fft_magnitude = np.abs(fft_result)
 
-        # Sample 5 points
-        levels = [float(fft_magnitude[i]) for i in self.SAMPLE_INDICES if i < len(fft_magnitude)]
+        # Sample 4 points from speech range (low freq = most energy)
+        raw = [float(fft_magnitude[i]) for i in self.SAMPLE_INDICES if i < len(fft_magnitude)]
+        while len(raw) < 4:
+            raw.append(0.0)
 
-        # Pad if needed
-        while len(levels) < 5:
-            levels.append(0.0)
+        # Normalize
+        max_val = 4096.0 * 10
+        normed = [min(1.0, v / max_val) for v in raw]
 
-        # Simple normalization with fixed max value
-        max_val = 4096.0 * 16
-        return [min(1.0, level / max_val) for level in levels]
+        # Mirror into symmetric 7-bar pattern: [edge, outer, inner, CENTER, inner, outer, edge]
+        # raw[0]=bin5 is strongest (center), raw[3]=bin35 is weakest (edge)
+        return [normed[3], normed[2], normed[1], normed[0], normed[1], normed[2], normed[3]]
 
     def reset(self):
         """Reset the analyzer buffer."""

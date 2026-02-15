@@ -132,6 +132,9 @@ async def audio_websocket(websocket: WebSocket):
     await websocket.accept()
     session: RecordingSession | None = None
 
+    import asyncio
+    loop = asyncio.get_event_loop()
+
     async def send_result(result: dict):
         """Send result to WebSocket client."""
         try:
@@ -141,10 +144,8 @@ async def audio_websocket(websocket: WebSocket):
 
     def on_result(result: dict):
         """Callback for recording session results (called from audio thread)."""
-        import asyncio
         try:
-            loop = asyncio.get_event_loop()
-            loop.create_task(send_result(result))
+            loop.call_soon_threadsafe(asyncio.ensure_future, send_result(result))
         except RuntimeError:
             pass
 

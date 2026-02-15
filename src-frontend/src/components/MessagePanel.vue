@@ -50,20 +50,25 @@ async function copyToClipboard(id: number, text: string) {
       <div
         v-for="msg in recentMessages"
         :key="msg.id"
-        class="message-item"
-        @dblclick="copyToClipboard(msg.id, msg.text)"
+        :class="['message-item', { 'system-item': msg.type === 'system' }]"
+        @dblclick="msg.type !== 'system' && copyToClipboard(msg.id, msg.text)"
       >
-        <div class="message-header">
-          <span class="message-text">{{ msg.text }}</span>
-          <span v-if="msg.duration" class="message-duration">{{ formatDuration(msg.duration) }}</span>
-        </div>
-        <span
-          v-if="msg.original && msg.original !== msg.text"
-          class="message-original"
-        >{{ msg.original }}</span>
-        <transition name="fade">
-          <span v-if="copiedId === msg.id" class="copy-toast">消息已复制</span>
-        </transition>
+        <template v-if="msg.type === 'system'">
+          <span class="system-text">{{ msg.text }}</span>
+        </template>
+        <template v-else>
+          <div class="message-header">
+            <span class="message-text">{{ msg.text }}</span>
+            <span v-if="msg.duration" class="message-duration">{{ formatDuration(msg.duration) }}</span>
+          </div>
+          <span
+            v-if="msg.original && msg.original !== msg.text"
+            class="message-original"
+          >{{ msg.original }}</span>
+          <transition name="fade">
+            <span v-if="copiedId === msg.id" class="copy-toast">消息已复制</span>
+          </transition>
+        </template>
       </div>
     </div>
   </transition>
@@ -183,6 +188,24 @@ async function copyToClipboard(id: number, text: string) {
     opacity: 0;
     transform: translateY(-8px);
   }
+}
+
+/* 系统消息样式 */
+.system-item {
+  cursor: default;
+}
+
+.system-item:hover {
+  background: none;
+  margin: 0;
+  padding: 6px 0;
+}
+
+.system-text {
+  display: block;
+  font-size: 11px;
+  color: rgba(179, 136, 255, 0.7);
+  font-style: italic;
 }
 
 /* 复制提示 */

@@ -109,6 +109,7 @@ export interface MessageRecord {
   original?: string
   timestamp: number
   duration?: number  // 音频时长（秒）
+  type?: 'transcription' | 'system'  // 默认 transcription
 }
 
 export const useAppState = defineStore('appState', () => {
@@ -132,8 +133,8 @@ export const useAppState = defineStore('appState', () => {
   const messageHistory = ref<MessageRecord[]>([])
   let messageIdCounter = 0
 
-  // 波形数据 (5 个归一化值 0-1)
-  const waveformLevels = ref<number[]>([0, 0, 0, 0, 0])
+  // 波形数据 (7 个归一化值 0-1)
+  const waveformLevels = ref<number[]>([0, 0, 0, 0, 0, 0, 0])
 
   // 录音配置（从 localStorage 加载）
   const savedSettings = loadSettings()
@@ -271,6 +272,29 @@ export const useAppState = defineStore('appState', () => {
     }
   }
 
+  // 添加或更新系统消息（如果最新一条是 system 类型就替换，否则新增）
+  function updateOrAddSystemMessage(text: string) {
+    const latest = messageHistory.value[0]
+    if (latest && latest.type === 'system') {
+      messageHistory.value.splice(0, 1, {
+        id: latest.id,
+        text,
+        timestamp: Date.now(),
+        type: 'system',
+      })
+    } else {
+      messageHistory.value.unshift({
+        id: ++messageIdCounter,
+        text,
+        timestamp: Date.now(),
+        type: 'system',
+      })
+      if (messageHistory.value.length > contextMaxHistory.value) {
+        messageHistory.value.pop()
+      }
+    }
+  }
+
   function setError(message: string) {
     errorMessage.value = message
     status.value = 'error'
@@ -281,7 +305,7 @@ export const useAppState = defineStore('appState', () => {
   }
 
   function resetWaveformLevels() {
-    waveformLevels.value = [0, 0, 0, 0, 0]
+    waveformLevels.value = [0, 0, 0, 0, 0, 0, 0]
   }
 
   function setAsrLanguage(lang: string) {
@@ -467,7 +491,7 @@ export const useAppState = defineStore('appState', () => {
     partialTranscript.value = ''
     displayPartialText.value = ''
     errorMessage.value = ''
-    waveformLevels.value = [0, 0, 0, 0, 0]
+    waveformLevels.value = [0, 0, 0, 0, 0, 0, 0]
   }
 
   // 从 localStorage 重新加载配置（用于跨窗口同步）
@@ -538,6 +562,7 @@ export const useAppState = defineStore('appState', () => {
     setPartialTranscript,
     addToHistory,
     updateLatestHistory,
+    updateOrAddSystemMessage,
     setError,
     setWaveformLevels,
     resetWaveformLevels,

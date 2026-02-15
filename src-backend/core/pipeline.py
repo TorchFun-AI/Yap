@@ -19,6 +19,9 @@ logger = logging.getLogger(__name__)
 class AudioPipeline:
     """Main audio processing pipeline."""
 
+    # Idle timeout: auto-stop after 30s silence
+    IDLE_TIMEOUT_SECONDS = 30
+
     def __init__(self, on_status=None):
         self.config = Config()
         self.vad = VADEngine()
@@ -45,6 +48,9 @@ class AudioPipeline:
         self.history_store = HistoryStore()
         # Streaming ASR engine for real-time transcription
         self._streaming_asr: StreamingASREngine = None
+        # Idle timeout tracking
+        self._last_speech_time: float = 0.0
+        self._idle_timed_out = False
 
     def set_config(self, correction_enabled: bool = True, target_language: str = None, asr_language: str = None, asr_model_id: str = None, context_enabled: bool = True, context_count: int = 3, auto_input_mode: str = 'input'):
         """Set runtime configuration for correction and translation."""
@@ -99,10 +105,17 @@ class AudioPipeline:
 
         vad_result = self.vad.process_chunk(audio_bytes)
 
+        # Initialize idle timer on first chunk
+        if self._last_speech_time == 0.0:
+            self._last_speech_time = time.perf_counter()
+
         # Track if speech just started (first frame of speech)
         speech_just_started = vad_result["is_speech"] and not self._speech_just_started
 
         if vad_result["is_speech"]:
+            # Reset idle tracking on any speech
+            self._last_speech_time = time.perf_counter()
+            self._idle_timed_out = False
             # If speech just started, prepend the pre-buffer to capture audio before VAD detection
             if speech_just_started:
                 self.audio_buffer.extend(self._pre_buffer)
@@ -131,6 +144,16 @@ class AudioPipeline:
                 # Keep only the last 100ms
                 if len(self._pre_buffer) > self._pre_buffer_size:
                     self._pre_buffer = self._pre_buffer[-self._pre_buffer_size:]
+
+        # Idle timeout detection (only when not actively speaking)
+        if not vad_result["is_speech"] and not self._speech_just_started and not self._idle_timed_out:
+            idle_seconds = time.perf_counter() - self._last_speech_time
+
+            if idle_seconds >= self.IDLE_TIMEOUT_SECONDS:
+                self._idle_timed_out = True
+                logger.info(f"[IDLE] Timeout after {idle_seconds:.1f}s of silence")
+                self._emit_status("idle_timeout")
+                return {"type": "idle_timeout"}
 
         result = {
             "type": "vad",
@@ -249,6 +272,8 @@ class AudioPipeline:
 
             t_end = time.perf_counter()
             logger.info(f"[TIMING] Total processing time: {(t_end - t_start)*1000:.0f}ms")
+            # Reset idle timer after processing completes
+            self._last_speech_time = time.perf_counter()
             self._emit_status("recording")
 
         return result
@@ -262,6 +287,9 @@ class AudioPipeline:
         if self._streaming_asr:
             self._streaming_asr.reset()
             self._streaming_asr = None
+        # Reset idle tracking
+        self._last_speech_time = 0.0
+        self._idle_timed_out = False
 
     def update_llm_config(self, config: dict) -> None:
         """Update LLM configuration dynamically."""
