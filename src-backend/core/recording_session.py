@@ -58,7 +58,7 @@ class RecordingSession:
             self._pipeline.initialize()
         except Exception as e:
             self._is_running = False
-            self._on_result({"type": "status", "status": "error", "message": f"模型加载失败: {e}"})
+            self._on_result({"type": "status", "status": "error", "message": f"Model loading failed: {e}"})
             return
 
         # Apply runtime config

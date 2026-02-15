@@ -475,6 +475,8 @@ onMounted(async () => {
     } else if (data.type === WsMessageType.STATUS) {
       if (data.status === BackendStatus.STARTING) {
         appState.setStatus(AppStatus.STARTING)
+      } else if (data.status === BackendStatus.DOWNLOADING) {
+        appState.setStatus(AppStatus.STARTING)
       } else if (data.status === BackendStatus.RECORDING) {
         appState.setStatus(AppStatus.LISTENING)
       } else if (data.status === BackendStatus.STOPPED) {
@@ -487,6 +489,8 @@ onMounted(async () => {
         appState.setStatus(AppStatus.TRANSLATING)
       } else if (data.status === BackendStatus.SPEAKING) {
         appState.setStatus(AppStatus.SPEAKING)
+      } else if (data.status === 'error') {
+        appState.setError(data.message || 'Unknown error')
       }
     } else if (data.type === WsMessageType.ERROR) {
       appState.setError(data.message)

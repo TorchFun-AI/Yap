@@ -74,6 +74,7 @@ class AudioPipeline:
         if self.is_initialized:
             return
         self.vad.initialize()
+        self.asr.set_on_status(self._on_status)
         self.asr.initialize()
         if self.llm:
             self.llm.initialize()

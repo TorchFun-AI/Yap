@@ -81,6 +81,7 @@ export const WsMessageType = {
 // 后端状态映射
 export const BackendStatus = {
   STARTING: 'starting',
+  DOWNLOADING: 'downloading',
   RECORDING: 'recording',
   STOPPED: 'stopped',
   TRANSCRIBING: 'transcribing',

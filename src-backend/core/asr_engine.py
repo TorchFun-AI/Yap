@@ -94,6 +94,16 @@ class ASREngine:
         self.model_type = None
         self.is_initialized = False
         self.executor = ThreadPoolExecutor(max_workers=2)
+        self._on_status: Optional[Callable] = None
+
+    def set_on_status(self, callback: Optional[Callable]) -> None:
+        """设置状态回调，用于通知前端下载/加载进度"""
+        self._on_status = callback
+
+    def _emit_status(self, status: str, **kwargs) -> None:
+        """发送状态通知"""
+        if self._on_status:
+            self._on_status({"type": "status", "status": status, **kwargs})
 
     def _delete_local_cache(self, model_id: str) -> None:
         """删除本地模型缓存"""
@@ -121,7 +131,24 @@ class ASREngine:
         local_path = _get_local_model_path(self.model_id)
         model_path = local_path or self.model_id
 
+        # 如果本地没有缓存，先下载
+        if not local_path:
+            self._emit_status("downloading", message=f"Downloading model {self.model_id}...")
+            try:
+                logger.info(f"Model not cached locally, downloading: {self.model_id}")
+                from huggingface_hub import snapshot_download
+                snapshot_download(
+                    repo_id=self.model_id,
+                    endpoint="https://hf-mirror.com",
+                )
+                local_path = _get_local_model_path(self.model_id)
+                model_path = local_path or self.model_id
+            except Exception as e:
+                logger.error(f"Model download failed: {e}")
+                raise
+
         # 第一次尝试加载
+        self._emit_status("starting", message="Loading model...")
         try:
             logger.info(f"Loading {self.model_type} model: {model_path}")
             self._load_model(model_path)
@@ -133,6 +160,7 @@ class ASREngine:
 
         # 删除缓存，重新下载
         try:
+            self._emit_status("downloading", message="Model corrupted, re-downloading...")
             self._delete_local_cache(self.model_id)
             logger.info(f"Re-downloading model: {self.model_id}")
             from huggingface_hub import snapshot_download
@@ -141,6 +169,7 @@ class ASREngine:
                 endpoint="https://hf-mirror.com",
             )
             # 重新获取本地路径并加载
+            self._emit_status("starting", message="Loading model...")
             local_path = _get_local_model_path(self.model_id)
             model_path = local_path or self.model_id
             logger.info(f"Retrying model load: {model_path}")
