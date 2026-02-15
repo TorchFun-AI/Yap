@@ -375,19 +375,13 @@ const iconPaths: Record<string, string> = {
         />
       </div>
 
-      <!-- Idle: 四角星图标 (iOS 风格) -->
-      <svg
+      <!-- Idle: Logo 图标 -->
+      <img
         v-else
         class="ball-icon star-glow"
-        :style="{ color: iconColor }"
-        viewBox="0 0 100 100"
-        fill="currentColor"
-      >
-        <!-- 主星星 (居中，更大) -->
-        <path d="M50 0 C50 38 62 50 100 50 C62 50 50 62 50 100 C50 62 38 50 0 50 C38 50 50 38 50 0 Z" />
-        <!-- 右下小星星 -->
-        <path d="M90 73 C90 85 95 90 107 90 C95 90 90 95 90 107 C90 95 85 90 73 90 C85 90 90 85 90 73 Z" opacity="0.85" />
-      </svg>
+        src="@/assets/logo.png"
+        draggable="false"
+      />
 
       <!-- 呼吸灯效果 -->
       <div v-if="!isExpanded && isActive" class="pulse-ring" :style="{ background: iconColor }" />
@@ -467,6 +461,7 @@ const iconPaths: Record<string, string> = {
   width: 56px;
   height: 56px;
   border-radius: 50%;
+  overflow: hidden;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -474,8 +469,8 @@ const iconPaths: Record<string, string> = {
   position: relative;
   z-index: 25;  /* 确保主按钮在操作面板之上 */
   background: linear-gradient(180deg, #2C2C2E 0%, #1C1C1E 100%);
-  border: 2px solid #4A90E2;
-  box-shadow: 0 0 12px rgba(74, 144, 226, 0.5);
+  border: 2px solid #2C2C2E;
+  box-shadow: 0 0 12px rgba(128, 0, 128, 0.4);
   transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   flex-shrink: 0;
   overflow: visible;
@@ -483,7 +478,7 @@ const iconPaths: Record<string, string> = {
 
 .main-button:hover {
   transform: scale(1.05);
-  box-shadow: 0 0 20px rgba(74, 144, 226, 0.6);
+  box-shadow: 0 0 20px rgba(128, 0, 128, 0.5);
 }
 
 .main-button:active {
@@ -491,7 +486,7 @@ const iconPaths: Record<string, string> = {
 }
 
 .main-button.expanded {
-  border-color: rgba(74, 144, 226, 0.6);
+  border-color: rgba(128, 0, 128, 0.6);
 }
 
 .ball-icon {
@@ -500,8 +495,12 @@ const iconPaths: Record<string, string> = {
   transition: color 0.3s ease;
 }
 
-/* 星星发光效果 */
+/* Logo 发光效果 */
 .ball-icon.star-glow {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
   filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.55));
 }
 
@@ -688,14 +687,14 @@ const iconPaths: Record<string, string> = {
 }
 
 .action-icon.active {
-  background: rgba(74, 144, 226, 0.2);
-  color: #4A90E2;
+  background: rgba(156, 39, 176, 0.2);
+  color: #B388FF;
 }
 
 .action-icon.toggled {
-  background: rgba(74, 144, 226, 0.3);
-  color: #4A90E2;
-  box-shadow: 0 0 8px rgba(74, 144, 226, 0.4);
+  background: rgba(156, 39, 176, 0.3);
+  color: #B388FF;
+  box-shadow: 0 0 8px rgba(156, 39, 176, 0.4);
 }
 
 .action-icon.disabled {
@@ -771,8 +770,8 @@ const iconPaths: Record<string, string> = {
 }
 
 .dropdown-item.selected {
-  background: rgba(74, 144, 226, 0.2);
-  color: #4A90E2;
+  background: rgba(156, 39, 176, 0.2);
+  color: #B388FF;
 }
 
 .dropdown-item.selected::before {

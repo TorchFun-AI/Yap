@@ -54,7 +54,12 @@ class RecordingSession:
             self._pipeline.asr.set_model_id(config["asrModelId"])
 
         # Initialize pipeline (loads ASR model and LLM client)
-        self._pipeline.initialize()
+        try:
+            self._pipeline.initialize()
+        except Exception as e:
+            self._is_running = False
+            self._on_result({"type": "status", "status": "error", "message": f"模型加载失败: {e}"})
+            return
 
         # Apply runtime config
         if config:

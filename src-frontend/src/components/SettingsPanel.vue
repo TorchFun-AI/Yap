@@ -897,7 +897,7 @@ onUnmounted(() => {
                       :percent="downloadProgress[model.id]?.progress || 0"
                       :show-info="false"
                       size="small"
-                      :stroke-color="'#4A90E2'"
+                      :stroke-color="'#B388FF'"
                     />
                     <div class="progress-info">
                       <span>{{ downloadProgress[model.id]?.downloaded || '0 B' }} / {{ downloadProgress[model.id]?.total || '?' }}</span>
@@ -1089,8 +1089,8 @@ onUnmounted(() => {
 }
 
 .tab-item.active {
-  background: rgba(74, 144, 226, 0.2);
-  color: #4A90E2;
+  background: rgba(156, 39, 176, 0.2);
+  color: #B388FF;
 }
 
 .tab-icon {
@@ -1220,8 +1220,8 @@ onUnmounted(() => {
 }
 
 .model-item.active {
-  background: rgba(74, 144, 226, 0.2);
-  border: 1px solid rgba(74, 144, 226, 0.3);
+  background: rgba(156, 39, 176, 0.2);
+  border: 1px solid rgba(156, 39, 176, 0.3);
 }
 
 .model-item.downloadable {
@@ -1342,7 +1342,7 @@ onUnmounted(() => {
 }
 
 :deep(.ant-switch-checked) {
-  background: #4A90E2 !important;
+  background: #B388FF !important;
 }
 
 :deep(.ant-input) {
@@ -1397,11 +1397,11 @@ onUnmounted(() => {
 }
 
 :deep(.ant-slider-track) {
-  background: #4A90E2 !important;
+  background: #B388FF !important;
 }
 
 :deep(.ant-slider-handle) {
-  border-color: #4A90E2 !important;
+  border-color: #B388FF !important;
 }
 
 :deep(.ant-btn) {

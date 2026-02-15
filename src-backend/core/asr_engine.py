@@ -5,6 +5,7 @@ Uses MLX Audio FunASR for speech-to-text transcription on Apple Silicon.
 
 import os
 import logging
+import shutil
 import threading
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -94,32 +95,60 @@ class ASREngine:
         self.is_initialized = False
         self.executor = ThreadPoolExecutor(max_workers=2)
 
+    def _delete_local_cache(self, model_id: str) -> None:
+        """删除本地模型缓存"""
+        cache_name = "models--" + model_id.replace("/", "--")
+        cache_path = HF_CACHE_DIR / cache_name
+        if cache_path.exists():
+            logger.warning(f"Deleting corrupted model cache: {cache_path}")
+            shutil.rmtree(cache_path)
+
+    def _load_model(self, model_path: str) -> None:
+        """加载模型"""
+        if self.model_type == "whisper":
+            self.model = WhisperModel.from_pretrained(model_path)
+        else:
+            self.model = FunASRModel.from_pretrained(model_path, fix_mistral_regex=True)
+
     def initialize(self) -> None:
-        """Initialize the ASR model based on model type."""
+        """Initialize the ASR model. On failure, delete cache and retry once."""
         if self.is_initialized:
             return
 
+        os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
+        self.model_type = _detect_model_type(self.model_id)
+
+        local_path = _get_local_model_path(self.model_id)
+        model_path = local_path or self.model_id
+
+        # 第一次尝试加载
         try:
-            # 设置 hf-mirror 镜像加速下载（如果需要下载）
-            os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
-
-            self.model_type = _detect_model_type(self.model_id)
-
-            # 优先使用本地缓存路径
-            local_path = _get_local_model_path(self.model_id)
-            model_path = local_path or self.model_id
-
             logger.info(f"Loading {self.model_type} model: {model_path}")
-
-            if self.model_type == "whisper":
-                self.model = WhisperModel.from_pretrained(model_path)
-            else:
-                self.model = FunASRModel.from_pretrained(model_path, fix_mistral_regex=True)
-
+            self._load_model(model_path)
             self.is_initialized = True
             logger.info(f"{self.model_type} model loaded successfully")
+            return
         except Exception as e:
-            logger.error(f"Model loading failed: {e}")
+            logger.warning(f"Model loading failed: {e}, will delete cache and retry")
+
+        # 删除缓存，重新下载
+        try:
+            self._delete_local_cache(self.model_id)
+            logger.info(f"Re-downloading model: {self.model_id}")
+            from huggingface_hub import snapshot_download
+            snapshot_download(
+                repo_id=self.model_id,
+                endpoint="https://hf-mirror.com",
+            )
+            # 重新获取本地路径并加载
+            local_path = _get_local_model_path(self.model_id)
+            model_path = local_path or self.model_id
+            logger.info(f"Retrying model load: {model_path}")
+            self._load_model(model_path)
+            self.is_initialized = True
+            logger.info(f"{self.model_type} model loaded successfully after re-download")
+        except Exception as e:
+            logger.error(f"Model loading failed after re-download: {e}")
             raise
 
     def transcribe(self, audio_float32: np.ndarray, language: Optional[str] = None) -> Optional[str]:

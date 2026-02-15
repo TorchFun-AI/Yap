@@ -27,8 +27,8 @@ export const DesignColors = {
   BALL_BORDER: 'rgba(255, 255, 255, 0.1)', // 亮色描边
 
   // 提亮色
-  ACCENT: '#2979FF',         // Electric Blue
-  ACCENT_ALT: '#B388FF',     // Neon Purple
+  ACCENT: '#B388FF',         // Neon Purple
+  ACCENT_ALT: '#9C27B0',     // Deep Purple
 
   // 文字颜色
   TEXT_PRIMARY: '#FFFFFF',
@@ -103,9 +103,9 @@ export const StatusColorMap: Record<string, string> = {
 
 // 悬浮球图标颜色映射 (用于图标颜色而非背景色)
 export const BallIconColorMap: Record<string, string> = {
-  [AppStatus.STARTING]: '#2979FF',    // Electric Blue
+  [AppStatus.STARTING]: '#B388FF',    // Neon Purple
   [AppStatus.SPEAKING]: '#fa8c16',    // orange
-  [AppStatus.TRANSCRIBING]: '#2979FF', // Electric Blue
+  [AppStatus.TRANSCRIBING]: '#B388FF', // Neon Purple
   [AppStatus.CORRECTING]: '#B388FF',   // Neon Purple
   [AppStatus.TRANSLATING]: '#13c2c2',  // cyan
   [AppStatus.LISTENING]: '#52c41a',    // green
@@ -115,9 +115,9 @@ export const BallIconColorMap: Record<string, string> = {
 
 // 悬浮球颜色映射 (HEX 颜色值) - 保留用于兼容
 export const BallColorMap: Record<string, string> = {
-  [AppStatus.STARTING]: '#1890ff',    // blue (processing)
+  [AppStatus.STARTING]: '#9C27B0',    // purple (processing)
   [AppStatus.SPEAKING]: '#fa8c16',    // orange
-  [AppStatus.TRANSCRIBING]: '#1890ff', // blue
+  [AppStatus.TRANSCRIBING]: '#9C27B0', // purple
   [AppStatus.CORRECTING]: '#722ed1',   // purple
   [AppStatus.TRANSLATING]: '#13c2c2',  // cyan
   [AppStatus.LISTENING]: '#52c41a',    // green
