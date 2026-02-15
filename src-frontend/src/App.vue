@@ -373,10 +373,9 @@ onMounted(async () => {
       // 兼容旧版本：如果没有传递设置值，从 localStorage 读取
       appState.reloadFromStorage()
     }
-    // 重新加载界面语言
-    const savedLocale = localStorage.getItem('app-locale') as 'zh' | 'en' | null
-    if (savedLocale) {
-      setLocale(savedLocale)
+    // 重新加载界面语言（从事件 payload 获取，避免 localStorage 跨窗口隔离问题）
+    if (event.payload?.locale) {
+      setLocale(event.payload.locale)
     }
   })
 

@@ -185,7 +185,7 @@ function onApiBaseChange(value: string) {
 const onLocaleChange = (value: 'zh' | 'en') => {
   currentLocale.value = value
   setLocale(value)
-  invoke('broadcast_settings_changed').catch(() => {})
+  invoke('broadcast_settings_changed', { settings: { locale: value } }).catch(() => {})
 }
 
 // 加载快捷键设置
