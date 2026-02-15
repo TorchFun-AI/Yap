@@ -14,10 +14,12 @@ from .waveform_analyzer import get_analyzer, broadcast_waveform
 class RecordingSession:
     """Manages a single recording session."""
 
-    def __init__(self, on_result: Callable[[dict], None]):
+    def __init__(self, on_result: Callable[[dict], None], pipeline: Optional['AudioPipeline'] = None):
         self._on_result = on_result
         self._audio_capture = AudioCapture()
-        self._pipeline = AudioPipeline(on_status=self._send_result)
+        self._pipeline = pipeline or AudioPipeline(on_status=self._send_result)
+        # Update pipeline's status callback to point to this session
+        self._pipeline._on_status = self._send_result
         self._is_running = False
         self._process_thread: Optional[threading.Thread] = None
         self._loop: Optional[asyncio.AbstractEventLoop] = None
@@ -71,6 +73,10 @@ class RecordingSession:
             )
             return
 
+        # Check if session was stopped during initialization
+        if not self._is_running:
+            return
+
         # Apply runtime config
         config = self._config
         if config:
@@ -91,11 +97,18 @@ class RecordingSession:
                 auto_input_mode=auto_input_mode
             )
 
-        self._audio_capture.start(callback=self._on_audio_chunk)
-        self._loop.call_soon_threadsafe(
-            self._on_result,
-            {"type": "status", "status": "recording"}
-        )
+        try:
+            self._audio_capture.start(callback=self._on_audio_chunk)
+            self._loop.call_soon_threadsafe(
+                self._on_result,
+                {"type": "status", "status": "recording"}
+            )
+        except Exception as e:
+            self._is_running = False
+            self._loop.call_soon_threadsafe(
+                self._on_result,
+                {"type": "status", "status": "error", "message": f"Audio capture failed: {e}"}
+            )
 
     def _on_audio_chunk(self, audio_bytes: bytes) -> None:
         """Process audio chunk from capture."""

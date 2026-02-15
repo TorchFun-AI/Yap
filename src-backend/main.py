@@ -158,13 +158,17 @@ async def audio_websocket(websocket: WebSocket):
                 action = data.get("action")
                 if action == "start":
                     if session is None or not session.is_running:
+                        # Detach old session's callback to prevent stale "stopped" messages
+                        old_pipeline = None
+                        if session is not None:
+                            session._on_result = lambda r: None
+                            old_pipeline = session._pipeline
                         config = data.get("config", {})
-                        session = RecordingSession(on_result=on_result)
+                        session = RecordingSession(on_result=on_result, pipeline=old_pipeline)
                         session.start(config)
                 elif action == "stop":
                     if session and session.is_running:
                         session.stop()
-                        session = None
                 elif action == "update_config":
                     if session and session.is_running:
                         config = data.get("config", {})

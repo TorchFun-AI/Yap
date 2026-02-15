@@ -131,6 +131,7 @@ export default {
     loadingModel: '正在加载模型…',
     downloadingModel: '正在下载模型…',
     recordingStarted: '录音已开始，请说话',
+    recordingStopped: '录音已停止',
     idleTimeout: '录音超时，已自动停止',
     error: '发生错误',
   },

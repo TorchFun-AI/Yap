@@ -487,6 +487,7 @@ onMounted(async () => {
         appState.updateOrAddSystemMessage(t('systemMessages.recordingStarted'))
       } else if (data.status === BackendStatus.STOPPED) {
         appState.setStatus(AppStatus.IDLE)
+        appState.updateOrAddSystemMessage(t('systemMessages.recordingStopped'))
       } else if (data.status === BackendStatus.TRANSCRIBING) {
         appState.setStatus(AppStatus.TRANSCRIBING)
       } else if (data.status === BackendStatus.CORRECTING) {

@@ -131,6 +131,7 @@ export default {
     loadingModel: 'Loading model…',
     downloadingModel: 'Downloading model…',
     recordingStarted: 'Recording started, speak now',
+    recordingStopped: 'Recording stopped',
     idleTimeout: 'Recording stopped due to inactivity',
     error: 'An error occurred',
   },
