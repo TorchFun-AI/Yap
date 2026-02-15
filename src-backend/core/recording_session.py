@@ -130,9 +130,10 @@ class RecordingSession:
         broadcast_waveform(levels)
         # Process through ASR pipeline
         result = self._pipeline.process_chunk(audio_bytes)
-        # Auto-stop on idle timeout
+        # Auto-stop on idle timeout (schedule on event loop to avoid deadlock
+        # since stop() calls stream.stop() which waits for this callback to finish)
         if result and result.get("type") == "idle_timeout":
-            self.stop()
+            self._loop.call_soon_threadsafe(self.stop)
             return
         self._send_result(result)
 
