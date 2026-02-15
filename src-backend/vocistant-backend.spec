@@ -16,9 +16,9 @@ BACKEND_DIR = Path(SPECPATH)
 PROJECT_ROOT = BACKEND_DIR.parent
 
 # MLX metallib path - needed for Metal GPU acceleration
-# MLX looks for mlx.metallib in the same directory as the executable
-site_packages = site.getsitepackages()[0]
-mlx_metallib = os.path.join(site_packages, 'mlx', 'lib', 'mlx.metallib')
+import importlib
+mlx_dir = importlib.import_module('mlx').__path__[0]
+mlx_metallib = os.path.join(mlx_dir, 'lib', 'mlx.metallib')
 
 a = Analysis(
     ['main.py'],

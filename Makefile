@@ -31,17 +31,17 @@ help:
 install-deps:
 	@echo "Installing frontend dependencies..."
 	cd $(FRONTEND_DIR) && npm install
+	cd $(TAURI_DIR) && npm install
 	@echo "Installing backend dependencies..."
-	cd $(BACKEND_DIR) && pip install -r requirements.txt
-	@echo "Installing PyInstaller..."
-	pip install pyinstaller
+	cd $(BACKEND_DIR) && uv sync
+	cd $(BACKEND_DIR) && uv pip install pyinstaller
 	@echo "Done."
 
 # Build backend sidecar (directory mode for faster startup)
 build-backend:
 	@echo "Building backend sidecar..."
 	@mkdir -p $(BINARIES_DIR)
-	cd $(BACKEND_DIR) && pyinstaller \
+	cd $(BACKEND_DIR) && uv run pyinstaller \
 		--distpath dist \
 		--workpath build \
 		--noconfirm \
@@ -60,7 +60,7 @@ build-frontend:
 # Full build
 build: build-backend
 	@echo "Building Tauri application..."
-	cd $(TAURI_DIR) && cargo tauri build
+	cd $(TAURI_DIR) && npm run build
 	@$(MAKE) repack-dmg
 
 # Version (extracted from tauri.conf.json)
@@ -92,8 +92,8 @@ repack-dmg:
 # Development mode (without backend packaging)
 dev: setup-placeholder
 	@echo "Starting development mode..."
-	@echo "Note: Start backend manually with 'cd $(BACKEND_DIR) && python main.py'"
-	cd $(TAURI_DIR) && cargo tauri dev
+	@echo "Note: Start backend manually with 'cd $(BACKEND_DIR) && uv run python main.py'"
+	cd $(TAURI_DIR) && npm run tauri dev
 
 # Setup placeholder sidecar for development
 setup-placeholder:

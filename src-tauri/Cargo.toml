@@ -1,12 +1,12 @@
 [package]
-name = "vocistant"
+name = "yap"
 version = "0.1.0"
-description = "Vocistant - Voice Assistant"
+description = "Yap - Voice Input Layer"
 authors = ["you"]
 edition = "2021"
 
 [lib]
-name = "vocistant_lib"
+name = "yap_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [build-dependencies]

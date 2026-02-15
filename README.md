@@ -76,28 +76,33 @@ Models auto-download from HuggingFace on first launch. Zero config to get starte
 
 - macOS with Apple Silicon (M1/M2/M3/M4)
 - Node.js 18+
-- Rust (latest stable)
 - Python 3.10 – 3.12
-- [uv](https://github.com/astral-sh/uv)
 
-### Install & Run
+> Rust and [uv](https://github.com/astral-sh/uv) will be installed automatically by the setup script if missing.
+
+### Development
 
 ```bash
-# Clone
 git clone https://github.com/TorchFun-AI/Yap.git && cd Yap
 
-# Install frontend dependencies
-cd src-frontend && npm install && cd ..
+# One-click setup (install all dependencies + dev environment)
+./setup.sh
 
-# Install Python dependencies
-cd src-backend && uv sync && cd ..
-
-# Terminal 1 — Start Python AI backend
+# Terminal 1 — Python AI backend
 cd src-backend && uv run python main.py
 
-# Terminal 2 — Start Tauri dev server
-cd src-tauri && npm run tauri dev
+# Terminal 2 — Tauri + Vue dev server
+make dev
 ```
+
+### Production Build
+
+```bash
+# Build .app bundle (compiles backend + Tauri app)
+./build.sh
+```
+
+Output in `src-tauri/target/release/bundle/`.
 
 ---
 
