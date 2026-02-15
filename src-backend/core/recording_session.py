@@ -4,11 +4,14 @@ Manages audio capture sessions and coordinates with the processing pipeline.
 """
 
 import asyncio
+import logging
 import threading
 from typing import Callable, Optional
 from .audio_capture import AudioCapture
 from .pipeline import AudioPipeline
 from .waveform_analyzer import get_analyzer, broadcast_waveform
+
+logger = logging.getLogger(__name__)
 
 
 class RecordingSession:
@@ -64,8 +67,11 @@ class RecordingSession:
     def _init_and_start(self) -> None:
         """Initialize pipeline and start recording (runs in background thread)."""
         try:
+            logger.info("[SESSION] Initializing pipeline...")
             self._pipeline.initialize()
+            logger.info("[SESSION] Pipeline initialized successfully")
         except Exception as e:
+            logger.error(f"[SESSION] Pipeline init failed: {e}")
             self._is_running = False
             self._loop.call_soon_threadsafe(
                 self._on_result,
@@ -75,6 +81,7 @@ class RecordingSession:
 
         # Check if session was stopped during initialization
         if not self._is_running:
+            logger.info("[SESSION] Session was stopped during initialization, aborting")
             return
 
         # Apply runtime config
@@ -98,12 +105,15 @@ class RecordingSession:
             )
 
         try:
+            logger.info("[SESSION] Starting audio capture...")
             self._audio_capture.start(callback=self._on_audio_chunk)
+            logger.info("[SESSION] Audio capture started, sending recording status")
             self._loop.call_soon_threadsafe(
                 self._on_result,
                 {"type": "status", "status": "recording"}
             )
         except Exception as e:
+            logger.error(f"[SESSION] Audio capture failed: {e}")
             self._is_running = False
             self._loop.call_soon_threadsafe(
                 self._on_result,
